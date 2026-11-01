@@ -3,7 +3,8 @@
 # Builds the yabi demo VM: the Alpine Linux kernel and userspace, prebuilt,
 # with static fbv and yabi and a splash theme, packed in one initramfs.
 #
-# Needs: curl, git, a C++20 compiler, cmake, make, unsquashfs, cpio, gzip. Nothing is compiled but giflib, fbv and yabi.
+# Needs: curl, git, a C++20 compiler, cmake, make, unsquashfs, cpio, gzip;
+# pigz is used when present. Nothing is compiled but giflib, fbv and yabi.
 #
 # Environment:
 #   OUT      output directory (default demo/out)
@@ -48,6 +49,11 @@ mkdir -p "$dl"
 rm -rf "$work"
 mkdir -p "$work"
 
+# Build and compress with every CPU of this machine.
+jobs=$(nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)
+compress="gzip -9"
+command -v pigz >/dev/null && compress="pigz -9 -p $jobs"
+
 fetch "$ALPINE_URL/$MINIROOTFS" "$MINIROOTFS" "$MINIROOTFS_SHA"
 fetch "$ALPINE_URL/netboot-$ALPINE/vmlinuz-virt" vmlinuz-virt "$KERNEL_SHA"
 fetch "$ALPINE_URL/netboot-$ALPINE/modloop-virt" modloop-virt "$MODLOOP_SHA"
@@ -56,7 +62,7 @@ fetch "https://sources.buildroot.net/giflib/$GIFLIB.tar.gz" "$GIFLIB.tar.gz" "$G
 # Static binaries run on Alpine's musl userspace as they are.
 echo "Building giflib"
 tar -C "$work" -xzf "$dl/$GIFLIB.tar.gz"
-make -s -C "$work/$GIFLIB" libgif.a CFLAGS=-O2 >/dev/null
+make -s -j"$jobs" -C "$work/$GIFLIB" libgif.a CFLAGS=-O2 >/dev/null
 
 # Hardening would make them position independent, which -static is not.
 static="-DCMAKE_BUILD_TYPE=MinSizeRel -DBUILD_TESTING=OFF -DCMAKE_EXE_LINKER_FLAGS=-static"
@@ -72,12 +78,12 @@ if [ -z "$fbv_src" ]; then
 fi
 cmake -S "$fbv_src" -B "$work/fbv" $static -DFBVNG_HARDENING=OFF -DFBVNG_WITH_PNG=OFF -DFBVNG_WITH_JPEG=OFF \
 	-DGIF_INCLUDE_DIR="$work/$GIFLIB" -DGIF_LIBRARY="$work/$GIFLIB/libgif.a" >/dev/null
-cmake --build "$work/fbv" -j >/dev/null
+cmake --build "$work/fbv" -j "$jobs" >/dev/null
 
 echo "Building yabi"
 cmake -S "$top" -B "$work/yabi" $static -DYABI_HARDENING=OFF -DCMAKE_INSTALL_PREFIX=/usr \
 	-DYABI_THEME_DIR=/usr/share/yabi/themes >/dev/null
-cmake --build "$work/yabi" -j >/dev/null
+cmake --build "$work/yabi" -j "$jobs" >/dev/null
 
 echo "Assembling the root filesystem"
 mkdir -p "$rootfs"
@@ -99,5 +105,5 @@ for m in $(grep '/bochs\.ko:' "$mods/modules.dep" | tr -d ':'); do
 done
 
 cp "$dl/vmlinuz-virt" "$out/vmlinuz-virt"
-(cd "$rootfs" && find . | cpio -o -H newc -R 0:0 --quiet | gzip -9) > "$out/initramfs.cpio.gz"
+(cd "$rootfs" && find . | cpio -o -H newc -R 0:0 --quiet | $compress) > "$out/initramfs.cpio.gz"
 echo "Done: $out/vmlinuz-virt and $out/initramfs.cpio.gz, boot them with demo/run.sh"
