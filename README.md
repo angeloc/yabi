@@ -70,6 +70,7 @@ bar. The bundled themes were made with it:
 * `default`: a progress bar on black
 * `theme1`: the Buildroot logo above the bar, from Buildroot's own repository (GPL-2.0-or-later)
 * `theme2`: "Linux" in the Lato font (SIL Open Font License) above the bar
+* `theme3`: a spinner, without a progress bar (loop mode)
 
 ## Boot integration
 
