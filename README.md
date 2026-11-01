@@ -102,7 +102,17 @@ cmake --install build
 | `YABI_SANITIZE`       | `OFF`                         | AddressSanitizer and UBSan   |
 | `YABI_TEST_FBV`       | empty                         | fbv for the end-to-end test  |
 
-The stripped binary is about 58 KiB on x86_64 and 70 KiB on aarch64 with musl.
+### Size
+
+A complete boot splash is yabi plus fbv built for GIF only, stripped MinSizeRel builds with GCC
+11.4 on x86_64:
+
+| Boot splash        | yabi    | fbv     | Total    | Libraries beyond the C and C++ runtime |
+|--------------------|---------|---------|----------|----------------------------------------|
+| SysV, busybox      | 62 KiB  | 78 KiB  | 140 KiB  | giflib (38 KiB)                        |
+| with systemd       | 66 KiB  | 78 KiB  | 144 KiB  | giflib, libsystemd (already there)     |
+
+A theme adds its animation; the bundled ones are 82 to 112 KiB.
 
 ### Cross compiling
 
