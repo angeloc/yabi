@@ -44,7 +44,7 @@ scale = none               # none, shrink or fit to the screen
 ```
 
 A progress animation with 101 frames gets one frame per percent. Forward progress steps through
-the frames at the animation's own pace, so the bar moves smoothly. `tools/make_progress_gif.py`
+the frames at the animation's own pace, so the bar moves smoothly. `themes/make_progress_gif.py`
 draws such an animation, with an optional logo above the bar; it made the bundled themes:
 
 * `default`: a progress bar on black
@@ -124,7 +124,7 @@ demo/run.sh      # boots it: the splash in the QEMU window, the console in the t
 ```
 
 To try a theme of your own, pass its directory: `demo/run.sh --theme ~/mytheme` boots with it
-instead of the built-in one, without rebuilding. `tools/make_progress_gif.py` is a quick start
+instead of the built-in one, without rebuilding. `themes/make_progress_gif.py` is a quick start
 for the animation.
 
 `build.sh` needs curl, git, a C++20 compiler, cmake, unsquashfs and cpio;
