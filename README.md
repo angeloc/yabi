@@ -114,6 +114,10 @@ demo/build.sh    # downloads Alpine, giflib and the logo, builds fbv and yabi (a
 demo/run.sh      # boots it: the splash in the QEMU window, the console in the terminal
 ```
 
+To try a theme of your own, pass its directory: `demo/run.sh --theme ~/mytheme` boots with it
+instead of the built-in one, without rebuilding. `tools/make_progress_gif.py` is a quick start
+for the animation.
+
 `build.sh` needs curl, git, a C++20 compiler, cmake, python3 with Pillow, unsquashfs and cpio;
 `run.sh` needs `qemu-system-x86_64` and uses KVM when available. fbv is built from the
 `../fbv-ng` checkout when present, else cloned. `run.sh --check` boots headless and saves
