@@ -27,6 +27,9 @@ public:
 	// Waits until fbv closes the connection, i.e. has exited.
 	bool wait_closed(std::chrono::milliseconds timeout);
 
+	// Readable when fbv closes the connection; replies are read by request().
+	int fd() const { return fd_.get(); }
+
 private:
 	explicit Client(UniqueFd fd) : fd_(std::move(fd)) {}
 

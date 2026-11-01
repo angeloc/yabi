@@ -9,7 +9,7 @@ cat <<'MSG'
     yabi theme default    switch theme on the fly
     yabi pause / resume   stop and restart the animation
     yabi status           frame, frame count, pause state
-    yabi rc               run the boot scripts again
+    yabi watch            follow a boot (the init scripts start it)
     yabi quit             close the splash
 
   Quit QEMU with Ctrl-a x.

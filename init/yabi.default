@@ -3,6 +3,11 @@
 # Theme shown at boot: a name from the theme directory or a path
 #YABI_THEME=default
 
+# Init directories whose S??* scripts make the progress, in run order; for
+# sysvinit with runlevels e.g. "/etc/rcS.d /etc/rc2.d". OpenRC is followed
+# through its started services, whatever this says.
+#YABI_WATCH=/etc/init.d
+
 # At the end of the boot S98yabi takes the splash to 100% and closes it: yes
 # clears the screen, retain leaves its last picture and graphics mode for the
 # application starting after it, no keeps the splash running.

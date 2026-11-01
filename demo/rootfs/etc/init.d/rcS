@@ -1,0 +1,6 @@
+#!/bin/sh
+# yabi demo: the usual rcS, it knows nothing about yabi
+for i in /etc/init.d/S??*; do
+	[ -x "$i" ] || continue
+	"$i" start
+done

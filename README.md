@@ -27,7 +27,7 @@ yabi quit               # close the splash, the framebuffer is free on return
 | `status`           | print the frame, the frame count and the pause state               |
 | `ping`             | exit 0 when the splash is running                                  |
 | `quit`             | close the splash; `yabi --retain quit` keeps it for the next program |
-| `rc [dir]`         | run the `S??*` init scripts of dir, moving the progress after each |
+| `watch [dir...]`   | follow the boot in the background, moving the progress             |
 
 Exit status: 0 done, 1 failed, 2 usage error, 3 splash not running, so scripts can call
 `yabi progress` whether the splash is enabled or not. `yabi --help` and `man yabi` list the
@@ -53,23 +53,27 @@ draws such an animation, with an optional logo above the bar; it made the bundle
 
 ## Boot integration
 
-SysV or busybox init: yabi installs two scripts in `/etc/init.d`. `S01yabi` shows the splash,
-`S98yabi` moves it to 100% and, once the animation got there, closes it. `/etc/default/yabi`
-sets the theme and how the splash ends:
+SysV or busybox init: yabi installs two scripts in `/etc/init.d` and changes nothing else in
+the boot. `S01yabi` shows the splash and starts `yabi watch`, which follows the boot as the
+distribution's own rc runs the other scripts: it sleeps until rc opens the next `S??*` script
+(inotify, no polling) and moves the progress to its place. Under OpenRC it follows the started
+services instead. At the end `S98yabi` moves the progress to 100%, pauses it
+once the animation got there and closes the splash. `/etc/default/yabi` sets the theme, the init directories to follow and how
+the splash ends:
 
 ```
-YABI_THEME=default   # a theme name or a path
-YABI_QUIT=yes        # yes: close it, retain: keep it for the next graphical program, no
+YABI_THEME=default        # a theme name or a path
+YABI_WATCH=/etc/init.d    # sysvinit with runlevels: "/etc/rcS.d /etc/rc2.d"
+YABI_QUIT=yes             # yes: close it, retain: leave its picture on screen, no: keep it
 ```
 
-The scripts in between can report their own progress with `yabi progress <n>`. To move it
-automatically after each script instead, run them through `yabi rc`, e.g. in a busybox
-`/etc/inittab`:
+For a seamless hand-over to a graphical application, set `YABI_QUIT=retain` and start the
+application after `S98yabi`, e.g. from `S99app`: the splash's last picture stays on the
+framebuffer until the application draws over it. Keep the text console off the display, as
+the demo does by unbinding it in `/sys/class/vtconsole`, so nothing repaints the screen in
+between.
 
-```
-::sysinit:/etc/init.d/S01yabi start
-::sysinit:/usr/bin/yabi rc /etc/init.d
-```
+Scripts can also set the progress themselves with `yabi progress <n>`.
 
 systemd: build with `-DYABI_SYSTEMD=ON` to install `yabi-start.service` and
 `yabi-quit.service`.
@@ -115,7 +119,7 @@ With an emulator set, `ctest` runs the tests on the build machine.
 
 `demo/` boots yabi in a small QEMU virtual machine: the prebuilt Alpine Linux kernel and
 userspace, with static fbv and yabi in one initramfs and busybox init running SysV-style boot
-scripts. The splash shows a logo above a progress bar that `yabi rc` moves as each
+scripts. The splash shows a logo above a progress bar that `yabi watch` moves as each
 demo service starts; once booted, try the yabi commands on the console.
 
 ```

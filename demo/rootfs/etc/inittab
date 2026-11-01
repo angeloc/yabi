@@ -1,6 +1,5 @@
-# yabi demo: busybox init in SysV style
-::sysinit:/etc/init.d/S01yabi start
-::sysinit:/usr/bin/yabi rc /etc/init.d
+# yabi demo: busybox init with a plain rcS, as a distribution would have
+::sysinit:/etc/init.d/rcS
 ttyS0::respawn:/sbin/getty -n -l /bin/sh -L 115200 ttyS0 vt100
 ::ctrlaltdel:/sbin/reboot
-::shutdown:/usr/bin/yabi quit
+::shutdown:/etc/init.d/S01yabi stop

@@ -77,8 +77,8 @@ endif()
 add_library(yabi_core STATIC
 	src/client.cpp
 	src/launch.cpp
-	src/rc.cpp
-	src/theme.cpp)
+	src/theme.cpp
+	src/watch.cpp)
 target_include_directories(yabi_core PUBLIC src)
 target_link_libraries(yabi_core PUBLIC yabi_flags)
 
