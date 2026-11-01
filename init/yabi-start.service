@@ -1,0 +1,13 @@
+[Unit]
+Description=yabi boot splash
+DefaultDependencies=no
+After=systemd-udev-trigger.service
+Before=sysinit.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/yabi start
+RemainAfterExit=yes
+
+[Install]
+WantedBy=sysinit.target
