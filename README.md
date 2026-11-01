@@ -26,7 +26,7 @@ yabi quit               # close the splash, the framebuffer is free on return
 | `theme <theme>`    | switch to another theme                                            |
 | `status`           | print the frame, the frame count and the pause state               |
 | `ping`             | exit 0 when the splash is running                                  |
-| `quit`             | close the splash; with `--retain` keep it for the next program     |
+| `quit`             | close the splash; `yabi --retain quit` keeps it for the next program |
 | `rc [dir]`         | run the `S??*` init scripts of dir, moving the progress after each |
 
 Exit status: 0 done, 1 failed, 2 usage error, 3 splash not running, so scripts can call
@@ -53,17 +53,23 @@ draws such an animation, with an optional logo above the bar; it made the bundle
 
 ## Boot integration
 
-SysV or busybox init: start the splash first and let `yabi rc` run the other scripts, moving the
-progress after each one, e.g. in `/etc/inittab`:
+SysV or busybox init: yabi installs two scripts in `/etc/init.d`. `S01yabi` shows the splash,
+`S98yabi` moves it to 100% and, once the animation got there, closes it. `/etc/default/yabi`
+sets the theme and how the splash ends:
+
+```
+YABI_THEME=default   # a theme name or a path
+YABI_QUIT=yes        # yes: close it, retain: keep it for the next graphical program, no
+```
+
+The scripts in between can report their own progress with `yabi progress <n>`. To move it
+automatically after each script instead, run them through `yabi rc`, e.g. in a busybox
+`/etc/inittab`:
 
 ```
 ::sysinit:/etc/init.d/S01yabi start
 ::sysinit:/usr/bin/yabi rc /etc/init.d
-::once:/usr/bin/yabi quit
 ```
-
-Scripts can also report their own progress with `yabi progress <n>`. `init/S01yabi` reads the
-theme from `/etc/default/yabi` (`YABI_THEME=<name>`).
 
 systemd: build with `-DYABI_SYSTEMD=ON` to install `yabi-start.service` and
 `yabi-quit.service`.
@@ -84,7 +90,7 @@ cmake --install build
 |-----------------------|-------------------------------|------------------------------|
 | `YABI_DEFAULT_SOCKET` | `/run/yabi.sock`              | control socket               |
 | `YABI_THEME_DIR`      | `<prefix>/share/yabi/themes`  | where themes are looked up   |
-| `YABI_SYSVINIT`       | `ON`                          | install `/etc/init.d/S01yabi` |
+| `YABI_SYSVINIT`       | `ON`                          | install the SysV init scripts |
 | `YABI_SYSTEMD`        | `OFF`                         | install the systemd units    |
 | `YABI_HARDENING`      | `ON`                          | compiler and linker hardening |
 | `YABI_SANITIZE`       | `OFF`                         | AddressSanitizer and UBSan   |

@@ -1,0 +1,9 @@
+# yabi settings for the init scripts S01yabi and S98yabi
+
+# Theme shown at boot: a name from the theme directory or a path
+#YABI_THEME=default
+
+# At the end of the boot S98yabi takes the splash to 100% and closes it: yes
+# clears the screen, retain leaves its last picture and graphics mode for the
+# application starting after it, no keeps the splash running.
+#YABI_QUIT=yes
