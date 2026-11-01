@@ -56,7 +56,7 @@ accel=
 
 qemu() {
 	# shellcheck disable=SC2086
-	qemu-system-x86_64 $accel -m 512 -vga std \
+	qemu-system-x86_64 $accel -m 512 -vga none -device VGA,edid=on,xres=1024,yres=768 \
 		-kernel "$out/vmlinuz-virt" -initrd "$initrd" \
 		-append "console=ttyS0 quiet loglevel=3" "$@"
 }

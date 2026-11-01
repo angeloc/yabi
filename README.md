@@ -171,8 +171,17 @@ When an emulator is set, `ctest` runs the tests on the build machine.
 - a static fbv and a static yabi, all in one initramfs;
 - busybox init, which runs SysV-style boot scripts.
 
-The splash shows a logo above a progress bar. `yabi watch` moves the bar as each demo
-service starts. Once it has booted, you can try the yabi commands on the console.
+This is what happens:
+
+1. The splash shows a logo above a progress bar. `yabi watch` moves the bar as each demo
+   service starts.
+2. The text console is detached from the display, so only the splash and the application
+   ever draw on it.
+3. At the end, `S98yabi` closes the splash but leaves its last picture on the screen
+   (`YABI_QUIT=retain`). Then `S99app` starts a dashboard application, which draws over it.
+   So nothing else shows between the splash and the application.
+
+On the console, you can then stop the application and try the yabi commands.
 
 ```
 demo/build.sh    # downloads Alpine and giflib, builds fbv and yabi (about a minute)
