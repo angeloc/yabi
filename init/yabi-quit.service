@@ -1,0 +1,10 @@
+[Unit]
+Description=Close the yabi boot splash
+After=multi-user.target yabi-start.service
+
+[Service]
+Type=oneshot
+ExecStart=-/usr/bin/yabi quit
+
+[Install]
+WantedBy=multi-user.target

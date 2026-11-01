@@ -12,6 +12,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(YABI_DEFAULT_SOCKET "/run/yabi.sock" CACHE STRING "Control socket used when none is given")
 set(YABI_THEME_DIR "${CMAKE_INSTALL_PREFIX}/share/yabi/themes" CACHE STRING "Directory holding the themes")
+option(YABI_SYSVINIT "Install the SysV init script" ON)
+option(YABI_SYSTEMD "Install the systemd units" OFF)
 option(YABI_HARDENING "Compiler and linker hardening" ON)
 option(YABI_SANITIZE "Build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 
@@ -90,3 +92,10 @@ target_compile_definitions(yabi PRIVATE
 install(TARGETS yabi RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(DIRECTORY themes/ DESTINATION ${YABI_THEME_DIR})
 install(FILES yabi.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
+if(YABI_SYSVINIT)
+	install(PROGRAMS init/S00yabi DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/init.d)
+endif()
+if(YABI_SYSTEMD)
+	install(FILES init/yabi-start.service init/yabi-quit.service
+		DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/system)
+endif()
