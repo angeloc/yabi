@@ -46,10 +46,12 @@ Close the splash and wait until fbv has exited, so the framebuffer is free.
 .BR watch " [\fIdir\fR...]"
 Follow the boot in the background until the splash is gone: move the progress
 as the executable \fBS??*\fR scripts of the init directories run, in the
-order of the directories and of the names, /etc/init.d by default. Under
-OpenRC the progress follows the started services of the sysinit, boot and
-default runlevels instead. Nothing in init or rc changes; \fBS01yabi\fR
-starts it.
+order of the directories and of the names. Under OpenRC the progress follows
+the started services of the sysinit, boot and default runlevels instead.
+Without directories it follows systemd when systemd runs, reading its own
+boot progress after every finished job, and /etc/init.d otherwise. It sleeps
+until something happens and changes nothing in the boot; \fBS01yabi\fR or
+\fByabi-start.service\fR start it.
 .SH OPTIONS
 .TP
 .BR \-s ", " \-\-socket " \fIpath\fR"

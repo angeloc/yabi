@@ -75,8 +75,10 @@ between.
 
 Scripts can also set the progress themselves with `yabi progress <n>`.
 
-systemd: build with `-DYABI_SYSTEMD=ON` to install `yabi-start.service` and
-`yabi-quit.service`.
+systemd: build with `-DYABI_SYSTEMD=ON`, which needs libsystemd. `yabi-start.service` shows the
+splash and starts `yabi watch`, which subscribes to systemd and, after every finished job,
+reads the boot progress systemd keeps itself; it talks to PID 1 directly, so it works before
+D-Bus is up. `yabi-quit.service` closes the splash as `YABI_QUIT` says.
 
 ## Building
 
@@ -95,7 +97,7 @@ cmake --install build
 | `YABI_DEFAULT_SOCKET` | `/run/yabi.sock`              | control socket               |
 | `YABI_THEME_DIR`      | `<prefix>/share/yabi/themes`  | where themes are looked up   |
 | `YABI_SYSVINIT`       | `ON`                          | install the SysV init scripts |
-| `YABI_SYSTEMD`        | `OFF`                         | install the systemd units    |
+| `YABI_SYSTEMD`        | `OFF`                         | follow systemd, install its units |
 | `YABI_HARDENING`      | `ON`                          | compiler and linker hardening |
 | `YABI_SANITIZE`       | `OFF`                         | AddressSanitizer and UBSan   |
 | `YABI_TEST_FBV`       | empty                         | fbv for the end-to-end test  |

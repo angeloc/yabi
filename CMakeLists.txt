@@ -13,7 +13,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(YABI_DEFAULT_SOCKET "/run/yabi.sock" CACHE STRING "Control socket used when none is given")
 set(YABI_THEME_DIR "${CMAKE_INSTALL_PREFIX}/share/yabi/themes" CACHE STRING "Directory holding the themes")
 option(YABI_SYSVINIT "Install the SysV init scripts" ON)
-option(YABI_SYSTEMD "Install the systemd units" OFF)
+option(YABI_SYSTEMD "Follow systemd boots (libsystemd) and install the units" OFF)
 option(YABI_HARDENING "Compiler and linker hardening" ON)
 option(YABI_SANITIZE "Build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 
@@ -81,6 +81,15 @@ add_library(yabi_core STATIC
 	src/watch.cpp)
 target_include_directories(yabi_core PUBLIC src)
 target_link_libraries(yabi_core PUBLIC yabi_flags)
+
+# Following systemd's boot needs libsystemd, everything else needs nothing.
+if(YABI_SYSTEMD)
+	find_package(PkgConfig REQUIRED)
+	pkg_check_modules(SYSTEMD REQUIRED IMPORTED_TARGET libsystemd)
+	target_sources(yabi_core PRIVATE src/systemd_watch.cpp)
+	target_link_libraries(yabi_core PUBLIC PkgConfig::SYSTEMD)
+	target_compile_definitions(yabi_core PUBLIC YABI_HAVE_SYSTEMD)
+endif()
 
 add_executable(yabi src/main.cpp)
 target_link_libraries(yabi PRIVATE yabi_core)

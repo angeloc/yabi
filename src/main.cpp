@@ -3,6 +3,9 @@
 #include "launch.hpp"
 #include "theme.hpp"
 #include "watch.hpp"
+#ifdef YABI_HAVE_SYSTEMD
+#include "systemd_watch.hpp"
+#endif
 
 #include <cerrno>
 #include <climits>
@@ -50,8 +53,9 @@ void usage(FILE *out)
 		"  ping              exit 0 when the splash is running\n"
 		"  quit              close the splash and wait until fbv exited\n"
 		"  watch [dir...]    follow the boot in the background: move the progress as the\n"
-		"                    S??* scripts of the init directories run (default /etc/init.d),\n"
-		"                    or as OpenRC starts its services; ends with the splash\n\n"
+		"                    S??* scripts of the init directories run, or as OpenRC starts\n"
+		"                    its services; without directories as systemd boots when it\n"
+		"                    runs, else /etc/init.d. Ends with the splash\n\n"
 		"Options:\n"
 		"  -s, --socket <path>  control socket (default %s, or $YABI_SOCKET)\n"
 		"  -f, --fbv <path>     fbv to start (default fbv from $PATH, or $YABI_FBV)\n"
@@ -210,6 +214,10 @@ int watch(const Settings &s, std::vector<std::string> dirs)
 	// Made after fork(): an sd-bus connection does not survive it.
 	try {
 		std::unique_ptr<Watcher> boot;
+#ifdef YABI_HAVE_SYSTEMD
+		if (dirs.empty() && systemd_booted())
+			boot = std::make_unique<SystemdWatcher>();
+#endif
 		if (!boot)
 			boot = std::make_unique<BootWatcher>(dirs.empty() ? std::vector<std::string>{"/etc/init.d"} : dirs);
 		follow(s, *boot, *client);

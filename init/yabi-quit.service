@@ -4,7 +4,10 @@ After=multi-user.target yabi-start.service
 
 [Service]
 Type=oneshot
-ExecStart=-/usr/bin/yabi quit
+EnvironmentFile=-/etc/default/yabi
+# YABI_QUIT: yes closes the splash, retain keeps it for the next graphical
+# program, no leaves it running
+ExecStart=/bin/sh -c 'case "$YABI_QUIT" in no) ;; retain) exec /usr/bin/yabi --retain quit ;; *) exec /usr/bin/yabi quit ;; esac'
 
 [Install]
 WantedBy=multi-user.target
