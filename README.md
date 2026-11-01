@@ -34,7 +34,7 @@ yabi quit               # close the splash, the framebuffer is free on return
 | `status`           | print the frame, the frame count and the pause state               |
 | `ping`             | exit 0 when the splash is running                                  |
 | `quit`             | close the splash; `yabi --retain quit` keeps it for the next program |
-| `rc [dir]`         | run the `S??*` init scripts of dir, moving the progress after each |
+| `watch [dir...]`   | follow the boot in the background, moving the progress             |
 
 The exit status tells what happened:
 
@@ -75,28 +75,34 @@ bar. The bundled themes were made with it:
 
 ### SysV init and busybox init
 
-yabi installs two scripts in `/etc/init.d`:
+yabi installs two scripts in `/etc/init.d`. It changes nothing else in the boot.
 
-- `S00yabi` shows the splash;
-- `S98yabi` moves the progress to 100%, waits until the animation gets there, and closes
-  the splash.
+1. `S00yabi` shows the splash and starts `yabi watch`.
+2. `yabi watch` follows the boot while the rc of the distribution runs the other scripts.
+   It sleeps until rc opens the next `S??*` script, then moves the progress to the place of
+   that script. It uses inotify, so it does not poll. Under OpenRC, it follows the started
+   services instead.
+3. At the end, `S98yabi` moves the progress to 100%, pauses the animation when it gets
+   there, and closes the splash.
 
-`/etc/default/yabi` sets the theme and how the splash ends:
-
-```
-YABI_THEME=default   # a theme name or a path
-YABI_QUIT=yes        # yes: close it, retain: keep it for the next graphical program, no
-```
-
-The scripts in between can report their own progress with `yabi progress <n>`.
-
-To move the progress automatically after each script instead, run the scripts through
-`yabi rc`. For example, in a busybox `/etc/inittab`:
+`/etc/default/yabi` sets the theme, the init directories to follow, and how the splash ends:
 
 ```
-::sysinit:/etc/init.d/S00yabi start
-::sysinit:/usr/bin/yabi rc /etc/init.d
+YABI_THEME=default        # a theme name or a path
+YABI_WATCH=/etc/init.d    # sysvinit with runlevels: "/etc/rcS.d /etc/rc2.d"
+YABI_QUIT=yes             # yes: close it, retain: leave its picture on screen, no: keep it
 ```
+
+To hand the screen over to a graphical application without a visible break:
+
+- set `YABI_QUIT=retain`;
+- start the application after `S98yabi`, for example from `S99app`.
+
+The last picture of the splash then stays on the framebuffer until the application draws
+over it. Also keep the text console off the display, so that nothing repaints the screen in
+between. The demo does this by unbinding the console in `/sys/class/vtconsole`.
+
+Your scripts can also set the progress themselves, with `yabi progress <n>`.
 
 ### systemd
 
@@ -150,7 +156,7 @@ When an emulator is set, `ctest` runs the tests on the build machine.
 - a static fbv and a static yabi, all in one initramfs;
 - busybox init, which runs SysV-style boot scripts.
 
-The splash shows a logo above a progress bar. `yabi rc` moves the bar as each demo
+The splash shows a logo above a progress bar. `yabi watch` moves the bar as each demo
 service starts. Once it has booted, you can try the yabi commands on the console.
 
 ```

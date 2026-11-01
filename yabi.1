@@ -45,10 +45,20 @@ Exit 0 when the splash is running.
 .B quit
 Close the splash and wait until fbv has exited. The framebuffer is then free.
 .TP
-.BR rc " [\fIdir\fR]"
-Run the executable \fBS??*\fR scripts of \fIdir\fR in order, with the argument
-\fBstart\fR, and move the progress after each one. The default directory is
-/etc/init.d. Use it in place of the rcS loop of a SysV or busybox init.
+.BR watch " [\fIdir\fR...]"
+Follow the boot in the background and move the progress, until the splash is
+gone. What it follows depends on the system:
+.RS
+.IP \(bu 2
+It follows the executable \fBS??*\fR scripts of the init directories as they
+run, in the order of the directories and then of the names. The default
+directory is /etc/init.d.
+.IP \(bu 2
+Under OpenRC, it follows the started services of the sysinit, boot and default
+runlevels instead.
+.PP
+It changes nothing in init or rc. \fBS00yabi\fR starts it.
+.RE
 .SH OPTIONS
 .TP
 .BR \-s ", " \-\-socket " \fIpath\fR"

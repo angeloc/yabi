@@ -1,18 +1,22 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "client.hpp"
 #include "launch.hpp"
-#include "rc.hpp"
 #include "theme.hpp"
+#include "watch.hpp"
 
 #include <cerrno>
 #include <climits>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <fcntl.h>
 #include <getopt.h>
+#include <memory>
+#include <poll.h>
 #include <stdlib.h>
 #include <string>
 #include <thread>
+#include <unistd.h>
 #include <vector>
 
 using namespace yabi;
@@ -45,8 +49,9 @@ void usage(FILE *out)
 		"  status            print the frame, frame count and pause state\n"
 		"  ping              exit 0 when the splash is running\n"
 		"  quit              close the splash and wait until fbv exited\n"
-		"  rc [dir]          run the S??* scripts of dir (default /etc/init.d) with \"start\",\n"
-		"                    moving the progress after each one\n\n"
+		"  watch [dir...]    follow the boot in the background: move the progress as the\n"
+		"                    S??* scripts of the init directories run (default /etc/init.d),\n"
+		"                    or as OpenRC starts its services; ends with the splash\n\n"
 		"Options:\n"
 		"  -s, --socket <path>  control socket (default %s, or $YABI_SOCKET)\n"
 		"  -f, --fbv <path>     fbv to start (default fbv from $PATH, or $YABI_FBV)\n"
@@ -148,21 +153,70 @@ int quit(const Settings &s)
 	return success;
 }
 
-int rc(const Settings &s, const std::string &dir)
+// Moves the progress as the boot goes, until the splash is gone. Sleeps in
+// poll() between events: an init script started, or fbv closed.
+void follow(const Settings &s, Watcher &boot, Client &client)
 {
-	const auto scripts = rc_scripts(dir);
-	const int failed = run_rc(scripts, [&](int percent) {
-		// The splash may be gone or disabled; booting goes on anyway.
-		if (auto client = Client::connect(s.socket)) {
+	int last = -1;
+	const auto end = std::chrono::steady_clock::now() + 10min;
+	for (;;) {
+		const auto left = std::chrono::ceil<std::chrono::milliseconds>(end - std::chrono::steady_clock::now());
+		if (left.count() <= 0)
+			return;
+		pollfd fds[] = {{boot.fd(), POLLIN, 0}, {client.fd(), POLLIN, 0}};
+		if (::poll(fds, 2, static_cast<int>(left.count())) < 0 && errno != EINTR)
+			return;
+		if (fds[1].revents)
+			return;
+		const auto percent = boot.progress();
+		if (percent && *percent > last) {
 			try {
-				client->request("progress " + std::to_string(percent), s.timeout);
+				// Paused by S98yabi: the application owns the screen now.
+				const Reply status = client.request("status", s.timeout);
+				if (!status.ok || status.text.find("paused=1") != std::string::npos)
+					return;
+				if (!client.request("progress " + std::to_string(*percent), s.timeout).ok)
+					return;
 			} catch (const std::exception &) {
+				return;
 			}
+			last = *percent;
 		}
-	});
-	return failed ? failure : success;
+	}
 }
 
+int watch(const Settings &s, std::vector<std::string> dirs)
+{
+	auto client = Client::connect(s.socket);
+	if (!client) {
+		std::fprintf(stderr, "yabi: splash not running (%s)\n", s.socket.c_str());
+		return not_running;
+	}
+
+	// Detach, so the init script that started us goes on.
+	const pid_t pid = ::fork();
+	if (pid < 0) {
+		std::perror("yabi: fork");
+		return failure;
+	}
+	if (pid > 0)
+		return success;
+	::setsid();
+	const int null = ::open("/dev/null", O_RDWR);
+	if (null >= 0)
+		for (int fd : {STDIN_FILENO, STDOUT_FILENO, STDERR_FILENO})
+			::dup2(null, fd);
+
+	// Made after fork(): an sd-bus connection does not survive it.
+	try {
+		std::unique_ptr<Watcher> boot;
+		if (!boot)
+			boot = std::make_unique<BootWatcher>(dirs.empty() ? std::vector<std::string>{"/etc/init.d"} : dirs);
+		follow(s, *boot, *client);
+	} catch (const std::exception &) {
+	}
+	::_exit(0);
+}
 bool parse_ms(const char *text, std::chrono::milliseconds &out)
 {
 	char *end;
@@ -249,8 +303,8 @@ int main(int argc, char **argv)
 		}
 		if (cmd == "quit")
 			return arity(0, 0) ? quit(s) : usage_error;
-		if (cmd == "rc")
-			return arity(0, 1) ? rc(s, args.size() > 1 ? args[1] : "/etc/init.d") : usage_error;
+		if (cmd == "watch")
+			return watch(s, {args.begin() + 1, args.end()});
 	} catch (const std::exception &e) {
 		std::fprintf(stderr, "yabi: %s\n", e.what());
 		return failure;

@@ -1,17 +1,28 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-// Stand-in for fbv: serves the control protocol on --control <path> and
-// appends its arguments and every command to $FAKE_FBV_LOG.
-// FAKE_FBV_FAIL=1 makes it exit at once.
+// Stand-in for fbv: serves the control protocol on --control <path> to any
+// number of clients at once and appends its arguments and every command to
+// $FAKE_FBV_LOG. FAKE_FBV_FAIL=1 makes it exit at once.
 #include "unique_fd.hpp"
 
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
+#include <poll.h>
 #include <string>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <vector>
+
+namespace {
+
+struct Client {
+	yabi::UniqueFd fd;
+	std::string buffer;
+};
+
+} // namespace
 
 int main(int argc, char **argv)
 {
@@ -35,36 +46,59 @@ int main(int argc, char **argv)
 	yabi::UniqueFd srv(::socket(AF_UNIX, SOCK_STREAM, 0));
 	::unlink(socket_path.c_str());
 	if (!srv || ::bind(srv.get(), reinterpret_cast<sockaddr *>(&addr), sizeof(addr)) < 0 ||
-	    ::listen(srv.get(), 4) < 0)
+	    ::listen(srv.get(), 8) < 0)
 		return 1;
 
 	unsigned frame = 0;
+	bool paused = false;
+	std::vector<Client> clients;
 	for (;;) {
-		yabi::UniqueFd client(::accept(srv.get(), nullptr, nullptr));
-		if (!client)
+		std::vector<pollfd> fds{{srv.get(), POLLIN, 0}};
+		for (const auto &c : clients)
+			fds.push_back({c.fd.get(), POLLIN, 0});
+		if (::poll(fds.data(), fds.size(), -1) < 0)
 			continue;
-		std::string buffer;
-		char c;
-		while (::read(client.get(), &c, 1) == 1) {
-			if (c != '\n') {
-				buffer += c;
+		if (fds[0].revents)
+			clients.push_back({yabi::UniqueFd(::accept(srv.get(), nullptr, nullptr)), {}});
+
+		for (std::size_t i = 1; i < fds.size(); i++) {
+			if (!fds[i].revents)
+				continue;
+			Client &c = clients[i - 1];
+			char chunk[256];
+			const ssize_t n = ::read(c.fd.get(), chunk, sizeof(chunk));
+			if (n <= 0) {
+				c.fd.reset();
 				continue;
 			}
-			log << buffer << std::endl;
-			std::string reply = "ok";
-			if (buffer.rfind("progress ", 0) == 0)
-				frame = static_cast<unsigned>(std::atoi(buffer.c_str() + 9));
-			else if (buffer == "status")
-				reply = "ok frame=" + std::to_string(frame) + " frames=101 paused=0";
-			else if (buffer.rfind("load ", 0) == 0 && buffer.find("missing") != std::string::npos)
-				reply = "error cannot load";
-			reply += "\n";
-			(void)!::write(client.get(), reply.data(), reply.size());
-			if (buffer.rfind("quit", 0) == 0) {
-				::unlink(socket_path.c_str());
-				return 0;
+			c.buffer.append(chunk, static_cast<std::size_t>(n));
+			for (std::size_t eol; (eol = c.buffer.find('\n')) != std::string::npos;) {
+				const std::string line = c.buffer.substr(0, eol);
+				c.buffer.erase(0, eol + 1);
+				log << line << std::endl;
+				std::string reply = "ok";
+				// Like fbv: progress, frame and resume run the animation again.
+				if (line.rfind("progress ", 0) == 0) {
+					frame = static_cast<unsigned>(std::atoi(line.c_str() + 9));
+					paused = false;
+				} else if (line == "pause") {
+					paused = true;
+				} else if (line == "resume" || line.rfind("frame ", 0) == 0) {
+					paused = false;
+				} else if (line == "status") {
+					reply = "ok frame=" + std::to_string(frame) + " frames=101 paused=" +
+						(paused ? "1" : "0");
+				} else if (line.rfind("load ", 0) == 0 && line.find("missing") != std::string::npos) {
+					reply = "error cannot load";
+				}
+				reply += "\n";
+				(void)!::write(c.fd.get(), reply.data(), reply.size());
+				if (line.rfind("quit", 0) == 0) {
+					::unlink(socket_path.c_str());
+					return 0;
+				}
 			}
-			buffer.clear();
 		}
+		std::erase_if(clients, [](const Client &c) { return !c.fd; });
 	}
 }

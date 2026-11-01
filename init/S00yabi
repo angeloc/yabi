@@ -1,15 +1,16 @@
 #!/bin/sh
 # SPDX-License-Identifier: GPL-2.0-or-later
-# Shows the boot splash; later scripts move it with "yabi progress <n>",
-# or run them through "yabi rc" to move it automatically.
+# Shows the boot splash and follows the boot: the progress moves as the
+# init scripts run, with nothing to change in them or in rc.
 
 YABI_THEME=default
+YABI_WATCH=/etc/init.d
 [ -r /etc/default/yabi ] && . /etc/default/yabi
 
 case "$1" in
 start)
-	# Also run again by "yabi rc", once the splash is up
-	yabi ping 2>/dev/null || yabi start "$YABI_THEME"
+	yabi ping 2>/dev/null && exit 0
+	yabi start "$YABI_THEME" && yabi watch $YABI_WATCH
 	;;
 stop)
 	yabi quit 2>/dev/null

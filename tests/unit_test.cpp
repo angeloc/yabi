@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // Theme parsing and the rc script runner.
 #include "check.hpp"
-#include "rc.hpp"
+#include "watch.hpp"
 #include "theme.hpp"
 
 #include <fstream>
@@ -69,37 +69,59 @@ void test_theme()
 	CHECK_THROWS(ThemeError, theme_directory("", "/x"));
 }
 
-void test_rc()
+void test_watch()
 {
-	const std::string rc = dir + "/init.d";
-	::mkdir(rc.c_str(), 0755);
-	const std::string out = dir + "/ran";
-	auto script = [&](const std::string &name, const std::string &body, mode_t mode = 0755) {
-		std::ofstream(rc + "/" + name) << "#!/bin/sh\necho \"" << name << " $1\" >> " << out << "\n" << body;
-		::chmod((rc + "/" + name).c_str(), mode);
+	const std::string init = dir + "/init.d", rc2 = dir + "/rc2.d";
+	::mkdir(init.c_str(), 0755);
+	::mkdir(rc2.c_str(), 0755);
+	auto script = [&](const std::string &path, mode_t mode = 0755) {
+		std::ofstream(path) << "#!/bin/sh\n";
+		::chmod(path.c_str(), mode);
 	};
-	script("S20second", "");
-	script("S10first", "");
-	script("S30fails", "exit 3\n");
-	script("S40skipped", "", 0644);
-	script("K10stop", "");
-	script("S50backup~", "");
+	script(init + "/S20second");
+	script(init + "/S10first");
+	script(init + "/S30third");
+	script(init + "/S40skipped", 0644);
+	script(init + "/K10stop");
+	script(init + "/S50backup~");
+	script(init + "/late");
+	CHECK(::symlink("../init.d/late", (rc2 + "/S90late").c_str()) == 0);
 
-	const auto scripts = rc_scripts(rc);
-	CHECK(scripts == (std::vector<std::string>{rc + "/S10first", rc + "/S20second", rc + "/S30fails"}));
+	const auto scripts = boot_scripts({init, rc2});
+	CHECK(scripts == (std::vector<std::string>{init + "/S10first", init + "/S20second", init + "/S30third",
+						   rc2 + "/S90late"}));
+	CHECK(boot_scripts({dir + "/none"}).empty());
 
-	std::vector<int> seen;
-	CHECK(run_rc(scripts, [&](int p) { seen.push_back(p); }) == 1);
-	CHECK(seen == (std::vector<int>{0, 33, 66, 100}));
+	BootWatcher boot({init, rc2});
+	CHECK(!boot.progress());
+	std::ifstream(init + "/S20second").get();
+	CHECK(boot.progress() == 25);
+	// Earlier scripts, and files that are no boot script, change nothing.
+	std::ifstream(init + "/S10first").get();
+	std::ifstream(init + "/K10stop").get();
+	CHECK(boot.progress() == 25);
+	// A runlevel link is followed to the file it names.
+	std::ifstream(init + "/late").get();
+	CHECK(boot.progress() == 75);
+}
 
-	std::ifstream in(out);
-	std::string ran((std::istreambuf_iterator<char>(in)), {});
-	CHECK(ran == "S10first start\nS20second start\nS30fails start\n");
+void test_openrc()
+{
+	const std::string root = dir + "/openrc";
+	for (const char *d : {"", "/etc", "/etc/runlevels", "/etc/runlevels/boot", "/etc/runlevels/default",
+			      "/run", "/run/openrc", "/run/openrc/started"})
+		::mkdir((root + d).c_str(), 0755);
+	for (const char *s : {"boot/hostname", "boot/syslog", "default/network", "default/app"})
+		std::ofstream(root + "/etc/runlevels/" + s);
 
-	seen.clear();
-	CHECK(rc_scripts(dir + "/none").empty());
-	CHECK(run_rc({}, [&](int p) { seen.push_back(p); }) == 0);
-	CHECK(seen == (std::vector<int>{100}));
+	CHECK(!openrc_progress(dir + "/nothing"));
+	CHECK(openrc_progress(root) == 0);
+	BootWatcher boot({}, root);
+	std::ofstream(root + "/run/openrc/started/hostname");
+	std::ofstream(root + "/run/openrc/started/unrelated");
+	CHECK(boot.progress() == 25);
+	std::ofstream(root + "/run/openrc/started/network");
+	CHECK(boot.progress() == 50);
 }
 
 } // namespace
@@ -111,7 +133,8 @@ int main()
 		return 2;
 	dir = tmp;
 	test_theme();
-	test_rc();
+	test_watch();
+	test_openrc();
 	(void)!std::system(("rm -rf " + dir).c_str());
 	return check_result();
 }

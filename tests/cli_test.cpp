@@ -71,6 +71,7 @@ int main(int argc, char **argv)
 	CHECK(run("ping").status == 3);
 	CHECK(run("progress 10").status == 3);
 	CHECK(run("quit").status == 3);
+	CHECK(run("watch").status == 3);
 
 	// Usage errors
 	CHECK(run("").status == 2);
@@ -108,16 +109,34 @@ int main(int argc, char **argv)
 	CHECK(logged() == "progress 42\nstatus\npause\nresume\nframe 7\nload " + std::string(real) +
 				  "\nload " + real + "\nframe 0\n");
 
-	// rc moves the progress around the scripts.
-	const std::string rc = dir + "/init.d";
-	::mkdir(rc.c_str(), 0755);
-	for (const char *name : {"S10a", "S20b"}) {
-		std::ofstream(rc + "/" + name) << "#!/bin/sh\nexit 0\n";
-		::chmod((rc + "/" + name).c_str(), 0755);
+	// watch follows the init scripts as they run, and ends with the splash.
+	const std::string initd = dir + "/init.d";
+	::mkdir(initd.c_str(), 0755);
+	for (const char *name : {"S10a", "S20b", "S30c"}) {
+		std::ofstream(initd + "/" + name) << "#!/bin/sh\nexit 0\n";
+		::chmod((initd + "/" + name).c_str(), 0755);
 	}
 	reset_log();
-	CHECK(run("rc " + rc).status == 0);
-	CHECK(logged() == "progress 0\nprogress 50\nprogress 100\n");
+	CHECK(run("watch " + initd).status == 0);
+	CHECK(std::system((initd + "/S20b start").c_str()) == 0);
+	bool seen = false;
+	for (int i = 0; i < 100 && !seen; i++) {
+		seen = logged() == "status\nprogress 33\n";
+		if (!seen)
+			std::this_thread::sleep_for(std::chrono::milliseconds(20));
+	}
+	CHECK(seen);
+	CHECK(std::system("pgrep -f '[y]abi -s .* watch /' >/dev/null") == 0);
+
+	// Once the splash is paused for the application, the watcher stops.
+	CHECK(run("pause").status == 0);
+	reset_log();
+	CHECK(std::system((initd + "/S30c start").c_str()) == 0);
+	for (int i = 0; i < 50 && std::system("pgrep -f '[y]abi -s .* watch /' >/dev/null") == 0; i++)
+		std::this_thread::sleep_for(std::chrono::milliseconds(20));
+	CHECK(logged() == "status\n");
+	CHECK(std::system("pgrep -f '[y]abi -s .* watch /' >/dev/null") != 0);
+	CHECK(run("resume").status == 0);
 
 	// quit returns once fbv has gone.
 	reset_log();
@@ -125,6 +144,9 @@ int main(int argc, char **argv)
 	CHECK(logged() == "quit retain\n");
 	CHECK(::access(sock.c_str(), F_OK) != 0);
 	CHECK(run("ping").status == 3);
+	// The watcher ended with the splash.
+	std::this_thread::sleep_for(std::chrono::milliseconds(200));
+	CHECK(std::system("pgrep -f '[y]abi -s .* watch /' >/dev/null") != 0);
 
 	// Graphics mode can be left off.
 	reset_log();
