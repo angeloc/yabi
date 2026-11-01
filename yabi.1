@@ -1,0 +1,104 @@
+.TH YABI 1 "2026-11-01" "yabi 0.1.0"
+.SH NAME
+yabi \- yet another bootsplash implementation
+.SH SYNOPSIS
+.B yabi
+[\fIoptions\fR] \fIcommand\fR [\fIarguments\fR]
+.SH DESCRIPTION
+.B yabi
+shows a boot splash on the Linux framebuffer, and lets the boot scripts drive
+it.
+.PP
+The first call starts
+.BR fbv (1)
+with a control socket and leaves it running. Every later call sends one
+command to it and exits. There is no daemon.
+.SH COMMANDS
+.TP
+.BR start " [\fItheme\fR]"
+Start fbv with the animation of the theme, and wait until fbv answers. The
+default theme is \fBdefault\fR. A theme in \fBprogress\fR mode starts on its
+first frame.
+.TP
+.BI progress " percent"
+Move a progress animation to \fIpercent\fR (0 to 100). When moving forward,
+the animation steps through its frames at its own pace.
+.TP
+.BI frame " n"
+Show frame \fIn\fR of the animation.
+.TP
+.BR pause ", " resume
+Stop and restart the animation.
+.TP
+.BI show " file"
+Switch to another image or animation.
+.TP
+.BI theme " theme"
+Switch to another theme.
+.TP
+.B status
+Print the current frame, the frame count and whether the animation is paused.
+.TP
+.B ping
+Exit 0 when the splash is running.
+.TP
+.B quit
+Close the splash and wait until fbv has exited. The framebuffer is then free.
+.SH OPTIONS
+.TP
+.BR \-s ", " \-\-socket " \fIpath\fR"
+The control socket. The default is /run/yabi.sock, or \fB$YABI_SOCKET\fR when
+it is set.
+.TP
+.BR \-f ", " \-\-fbv " \fIpath\fR"
+The fbv program to start. The default is \fBfbv\fR from \fB$PATH\fR, or
+\fB$YABI_FBV\fR when it is set.
+.TP
+.BR \-d ", " \-\-themes " \fIdir\fR"
+The directory that holds the themes.
+.TP
+.BR \-t ", " \-\-timeout " \fIms\fR"
+How long to wait for fbv, in milliseconds. The default is 3000.
+.TP
+.BR \-n ", " \-\-no\-graphics
+For \fBstart\fR: leave the console in text mode.
+.TP
+.BR \-r ", " \-\-retain
+For \fBquit\fR: keep the splash on the screen and the console in graphics
+mode, for the program that takes over the display.
+.SH THEMES
+A theme is a directory that holds \fBtheme.conf\fR and an animation. You give
+a theme by its name, or by a path that contains a slash.
+.PP
+.nf
+# comment
+animation = boot.gif   # relative to the theme directory
+mode = progress        # progress or loop
+scale = none           # none, shrink or fit
+.fi
+.PP
+In \fBprogress\fR mode, the animation holds the frame set by \fBprogress\fR.
+With an animation of 101 frames, each percent has its own frame.
+.PP
+In \fBloop\fR mode, the animation plays freely.
+.SH EXIT STATUS
+.TP
+.B 0
+The command is done.
+.TP
+.B 1
+The command failed.
+.TP
+.B 2
+Usage error.
+.TP
+.B 3
+The splash is not running.
+.SH EXAMPLE
+.nf
+yabi start
+yabi progress 30
+yabi quit
+.fi
+.SH SEE ALSO
+.BR fbv (1)
