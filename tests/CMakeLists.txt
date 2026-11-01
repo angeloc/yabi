@@ -14,6 +14,13 @@ if(CMAKE_CROSSCOMPILING AND CMAKE_SYSROOT)
 	set_tests_properties(cli PROPERTIES ENVIRONMENT "QEMU_LD_PREFIX=${CMAKE_SYSROOT}")
 endif()
 
+if(YABI_SYSTEMD)
+	add_executable(systemd_test systemd_test.cpp)
+	target_link_libraries(systemd_test PRIVATE yabi_core)
+	add_test(NAME systemd COMMAND systemd_test)
+	set_tests_properties(systemd PROPERTIES SKIP_RETURN_CODE 77)
+endif()
+
 # With a real fbv (fbv-ng with --control), on a fake framebuffer
 set(YABI_TEST_FBV "" CACHE FILEPATH "fbv to run the end-to-end test with")
 if(YABI_TEST_FBV AND NOT CMAKE_CROSSCOMPILING)

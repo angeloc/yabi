@@ -6,7 +6,10 @@ Before=sysinit.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/yabi start
+EnvironmentFile=-/etc/default/yabi
+ExecStart=/usr/bin/yabi start $YABI_THEME
+# Follows systemd's own boot progress until the splash is gone
+ExecStartPost=/usr/bin/yabi watch
 RemainAfterExit=yes
 
 [Install]

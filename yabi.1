@@ -50,14 +50,18 @@ Follow the boot in the background and move the progress, until the splash is
 gone. What it follows depends on the system:
 .RS
 .IP \(bu 2
-It follows the executable \fBS??*\fR scripts of the init directories as they
-run, in the order of the directories and then of the names. The default
-directory is /etc/init.d.
+With init directories, it follows the executable \fBS??*\fR scripts as they
+run, in the order of the directories and then of the names.
 .IP \(bu 2
 Under OpenRC, it follows the started services of the sysinit, boot and default
 runlevels instead.
+.IP \(bu 2
+Without directories, it follows systemd when systemd runs: after every
+finished job, it reads the boot progress that systemd itself keeps. Otherwise
+it follows /etc/init.d.
 .PP
-It changes nothing in init or rc. \fBS00yabi\fR starts it.
+It sleeps until something happens, and it changes nothing in the boot.
+\fBS00yabi\fR or \fByabi-start.service\fR start it.
 .RE
 .SH OPTIONS
 .TP

@@ -11,11 +11,11 @@ jobs:
       fail-fast: false
       matrix:
         compiler: [g++, clang++]
-    name: ${{ matrix.compiler }}, sanitizers, with fbv
+    name: ${{ matrix.compiler }}, sanitizers, systemd, with fbv
     steps:
       - uses: actions/checkout@v4
       - name: Dependencies
-        run: sudo apt-get update && sudo apt-get install -y cmake libgif-dev
+        run: sudo apt-get update && sudo apt-get install -y cmake libgif-dev libsystemd-dev pkg-config
       - name: fbv
         run: |
           git clone --depth 1 -b control https://github.com/angeloc/fbv-ng.git fbv-ng
@@ -24,7 +24,7 @@ jobs:
       - name: Configure
         run: |
           cmake -S . -B build -DCMAKE_CXX_COMPILER=${{ matrix.compiler }} -DYABI_SANITIZE=ON \
-            -DCMAKE_BUILD_TYPE=Debug -DYABI_TEST_FBV=$PWD/fbv-build/fbv
+            -DYABI_SYSTEMD=ON -DCMAKE_BUILD_TYPE=Debug -DYABI_TEST_FBV=$PWD/fbv-build/fbv
       - name: Build
         run: cmake --build build -j
       - name: Test
