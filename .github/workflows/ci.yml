@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  native:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [g++, clang++]
+    name: ${{ matrix.compiler }}, sanitizers, with fbv
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake libgif-dev
+      - name: fbv
+        run: |
+          git clone --depth 1 -b control https://github.com/angeloc/fbv-ng.git fbv-ng
+          cmake -S fbv-ng -B fbv-build -DBUILD_TESTING=OFF -DFBVNG_WITH_PNG=OFF -DFBVNG_WITH_JPEG=OFF
+          cmake --build fbv-build -j
+      - name: Configure
+        run: |
+          cmake -S . -B build -DCMAKE_CXX_COMPILER=${{ matrix.compiler }} -DYABI_SANITIZE=ON \
+            -DCMAKE_BUILD_TYPE=Debug -DYABI_TEST_FBV=$PWD/fbv-build/fbv
+      - name: Build
+        run: cmake --build build -j
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  cross:
+    runs-on: ubuntu-24.04
+    name: aarch64 cross build, tests under qemu
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake g++-aarch64-linux-gnu qemu-user
+      - name: Configure
+        run: |
+          cmake -S . -B build -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
+            -DCMAKE_CXX_COMPILER=aarch64-linux-gnu-g++ \
+            -DCMAKE_CROSSCOMPILING_EMULATOR="qemu-aarch64;-L;/usr/aarch64-linux-gnu"
+      - name: Build
+        run: cmake --build build -j
+      - name: Test
+        run: QEMU_LD_PREFIX=/usr/aarch64-linux-gnu ctest --test-dir build --output-on-failure
