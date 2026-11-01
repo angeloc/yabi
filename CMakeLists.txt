@@ -99,3 +99,8 @@ if(YABI_SYSTEMD)
 	install(FILES init/yabi-start.service init/yabi-quit.service
 		DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/systemd/system)
 endif()
+
+# Test programs run through CMAKE_CROSSCOMPILING_EMULATOR when cross building.
+if(BUILD_TESTING)
+	add_subdirectory(tests)
+endif()
