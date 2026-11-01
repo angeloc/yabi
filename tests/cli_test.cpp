@@ -154,6 +154,25 @@ int main(int argc, char **argv)
 	CHECK(logged().rfind("args -y -c -i -u --control ", 0) == 0);
 	CHECK(run("quit").status == 0);
 
+	// A loop theme spins on whatever the progress says.
+	reset_log();
+	CHECK(run("--no-graphics start theme3").status == 0);
+	CHECK(logged().find("ping\nresume\n") != std::string::npos);
+	reset_log();
+	CHECK(run("progress 40").status == 0);
+	CHECK(run("watch " + initd).status == 0);
+	CHECK(run("freeze").status == 0);
+	CHECK(logged() == "pause\n");
+	CHECK(run("quit").status == 0);
+	CHECK(::access((sock + ".mode").c_str(), F_OK) != 0);
+
+	// A progress theme freezes at 100%.
+	CHECK(run("--no-graphics start").status == 0);
+	reset_log();
+	CHECK(run("freeze").status == 0);
+	CHECK(logged() == "progress 100\nstatus\npause\n");
+	CHECK(run("quit").status == 0);
+
 	(void)!std::system(("rm -rf " + dir).c_str());
 	return check_result();
 }

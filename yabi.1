@@ -28,6 +28,11 @@ Show frame \fIn\fR of the animation.
 .BR pause ", " resume
 Stop and restart the animation.
 .TP
+.B freeze
+Finish the splash: move a progress theme to 100%, wait until the animation got
+there and pause it, so an application can draw over it; a loop theme is just
+paused.
+.TP
 .BI show " file"
 Switch to another image or animation.
 .TP
@@ -85,7 +90,8 @@ scale = none           # none, shrink or fit
 .PP
 In \fBprogress\fR mode the animation holds the frame set by \fBprogress\fR;
 an animation of 101 frames gives one frame per percent. In \fBloop\fR mode it
-plays freely.
+plays freely, for a spinner, and \fBprogress\fR and \fBwatch\fR leave it
+alone.
 .SH EXIT STATUS
 0 done, 1 failed, 2 usage error, 3 splash not running.
 .SH EXAMPLE
