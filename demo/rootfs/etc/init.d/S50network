@@ -1,0 +1,5 @@
+#!/bin/sh
+# yabi demo: stands in for a real service
+[ "$1" = start ] || exit 0
+echo "Bringing up the network"
+sleep 1

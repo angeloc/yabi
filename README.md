@@ -102,6 +102,23 @@ cmake --build build && ctest --test-dir build
 
 With an emulator set, `ctest` runs the tests on the build machine.
 
+## Demo
+
+`demo/` boots yabi in a small QEMU virtual machine: the prebuilt Alpine Linux kernel and
+userspace, with static fbv and yabi in one initramfs and busybox init running SysV-style boot
+scripts. The splash shows the Buildroot logo above a progress bar that `yabi rc` moves as each
+demo service starts; once booted, try the yabi commands on the console.
+
+```
+demo/build.sh    # downloads Alpine, giflib and the logo, builds fbv and yabi (about a minute)
+demo/run.sh      # boots it: the splash in the QEMU window, the console in the terminal
+```
+
+`build.sh` needs curl, git, a C++20 compiler, cmake, python3 with Pillow, unsquashfs and cpio;
+`run.sh` needs `qemu-system-x86_64` and uses KVM when available. fbv is built from the
+`../fbv-ng` checkout when present, else cloned. `run.sh --check` boots headless and saves
+screenshots of the splash.
+
 ## Testing
 
 * unit tests of the theme parser and the init script runner
