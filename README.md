@@ -7,10 +7,10 @@ implementation".
 - It is small enough for any system.
 - The init scripts drive it with plain commands.
 
-yabi shows its animations with [fbv](https://github.com/angeloc/fbv-ng), which has a
-control socket:
+yabi shows its animations with [fbv-ng](https://github.com/angeloc/fbv-ng), through the
+control socket of fbv-ng:
 
-- `yabi start` launches fbv and returns.
+- `yabi start` launches the `fbv` program of fbv-ng and returns.
 - Every later `yabi` call sends one command over the socket and exits.
 
 There is no daemon. So yabi works the same way with SysV init, busybox init and systemd.
@@ -93,7 +93,8 @@ Build with `-DYABI_SYSTEMD=ON` to install `yabi-start.service` and `yabi-quit.se
 yabi only needs a C++20 compiler and CMake 3.16 or later. It uses no library other than the
 C and C++ runtime.
 
-fbv must also be on the target.
+The target must also have the `fbv` program of fbv-ng, because yabi uses its `--control`
+option.
 
 ```
 cmake -S . -B build
@@ -135,7 +136,7 @@ When an emulator is set, `ctest` runs the tests on the build machine.
 - a static fbv and a static yabi, all in one initramfs;
 - busybox init, which runs SysV-style boot scripts.
 
-The splash shows the Buildroot logo above a progress bar. `yabi rc` moves the bar as each demo
+The splash shows a logo above a progress bar. `yabi rc` moves the bar as each demo
 service starts. Once it has booted, you can try the yabi commands on the console.
 
 ```
