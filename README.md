@@ -45,8 +45,10 @@ scale = none               # none, shrink or fit to the screen
 
 A progress animation with 101 frames gets one frame per percent. Forward progress steps through
 the frames at the animation's own pace, so the bar moves smoothly. `tools/make_progress_gif.py`
-draws such an animation, with an optional logo above the bar; the `default` theme is made with
-it.
+draws such an animation, with an optional logo above the bar; it made the bundled themes:
+
+* `default`: a progress bar on black
+* `theme1`: the Buildroot logo above the bar, from Buildroot's own repository (GPL-2.0-or-later)
 
 ## Boot integration
 
@@ -110,7 +112,7 @@ scripts. The splash shows a logo above a progress bar that `yabi rc` moves as ea
 demo service starts; once booted, try the yabi commands on the console.
 
 ```
-demo/build.sh    # downloads Alpine, giflib and the logo, builds fbv and yabi (about a minute)
+demo/build.sh    # downloads Alpine and giflib, builds fbv and yabi (about a minute)
 demo/run.sh      # boots it: the splash in the QEMU window, the console in the terminal
 ```
 
@@ -118,7 +120,7 @@ To try a theme of your own, pass its directory: `demo/run.sh --theme ~/mytheme` 
 instead of the built-in one, without rebuilding. `tools/make_progress_gif.py` is a quick start
 for the animation.
 
-`build.sh` needs curl, git, a C++20 compiler, cmake, python3 with Pillow, unsquashfs and cpio;
+`build.sh` needs curl, git, a C++20 compiler, cmake, unsquashfs and cpio;
 `run.sh` needs `qemu-system-x86_64` and uses KVM when available. fbv is built from the
 `../fbv-ng` checkout when present, else cloned. `run.sh --check` boots headless and saves
 screenshots of the splash.
