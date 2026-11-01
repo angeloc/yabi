@@ -64,7 +64,7 @@ In a progress animation with 101 frames, each percent has its own frame. When th
 moves forward, yabi steps through the frames at the pace of the animation, so the bar moves
 smoothly.
 
-`tools/make_progress_gif.py` draws this kind of animation, with an optional logo above the
+`themes/make_progress_gif.py` draws this kind of animation, with an optional logo above the
 bar. The bundled themes were made with it:
 
 * `default`: a progress bar on black
@@ -160,7 +160,7 @@ demo/run.sh      # boots it: the splash in the QEMU window, the console in the t
 
 To try a theme of your own, pass its directory: `demo/run.sh --theme ~/mytheme` boots with
 it in place of the built-in one, and you do not need to rebuild.
-`tools/make_progress_gif.py` is a quick way to make the animation.
+`themes/make_progress_gif.py` is a quick way to make the animation.
 
 What the scripts need:
 
