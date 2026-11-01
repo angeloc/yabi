@@ -1,15 +1,17 @@
 #!/bin/sh
-# yabi demo: the splash stays up at 100%, try the commands
+# yabi demo: printed once the application took over from the splash
 [ "$1" = start ] || exit 0
 cat <<'MSG'
 
-  Boot complete, the splash is at 100%. Try, in this console:
+  Boot complete: the splash handed the screen over to the demo application.
+  To play with yabi, in this console:
 
+    killall fbv           stop the demo application
+    yabi start theme2     show a splash
     yabi progress 30      move the progress bar
     yabi theme default    switch theme on the fly
     yabi pause / resume   stop and restart the animation
     yabi status           frame, frame count, pause state
-    yabi watch            follow a boot (the init scripts start it)
     yabi quit             close the splash
 
   Quit QEMU with Ctrl-a x.

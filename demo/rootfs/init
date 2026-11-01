@@ -8,4 +8,16 @@ mount -t devpts devpts /dev/pts
 mount -t tmpfs run /run
 # QEMU's standard VGA, with fbdev emulation it gives /dev/fb0
 modprobe bochs
+
+# The display belongs to the splash and the application: detach the text
+# console from the framebuffer, the console is the serial port.
+i=0
+while [ ! -e /dev/fb0 ] && [ $i -lt 20 ]; do
+	sleep 0.1
+	i=$((i + 1))
+done
+for vtcon in /sys/class/vtconsole/vtcon*; do
+	grep -q 'frame buffer' "$vtcon/name" 2>/dev/null && echo 0 > "$vtcon/bind"
+done
+
 exec /sbin/init

@@ -132,7 +132,11 @@ With an emulator set, `ctest` runs the tests on the build machine.
 `demo/` boots yabi in a small QEMU virtual machine: the prebuilt Alpine Linux kernel and
 userspace, with static fbv and yabi in one initramfs and busybox init running SysV-style boot
 scripts. The splash shows a logo above a progress bar that `yabi watch` moves as each
-demo service starts; once booted, try the yabi commands on the console.
+demo service starts; the text console is detached from the display, so only the splash and
+the application ever draw on it. At the end `S98yabi` closes the splash leaving its last
+picture (`YABI_QUIT=retain`) and `S99app` starts a dashboard application that draws over it,
+so the hand-over from splash to application shows nothing in between. On the console you can
+then stop the application and try the yabi commands.
 
 ```
 demo/build.sh    # downloads Alpine and giflib, builds fbv and yabi (about a minute)

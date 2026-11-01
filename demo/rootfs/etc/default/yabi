@@ -1,3 +1,3 @@
 YABI_THEME=theme1
-# Keep the splash after the boot, to try the yabi commands
-YABI_QUIT=no
+# Leave the finished splash on screen for the demo application
+YABI_QUIT=retain
