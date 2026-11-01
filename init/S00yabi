@@ -12,7 +12,8 @@ start)
 	yabi ping 2>/dev/null || yabi start "$YABI_THEME"
 	;;
 stop)
-	yabi quit
+	yabi quit 2>/dev/null
+	exit 0
 	;;
 *)
 	echo "Usage: $0 {start|stop}" >&2

@@ -1,0 +1,31 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Ends the boot splash: moves the progress to 100% and freezes it once the
+# animation got there; then the splash closes as YABI_QUIT in
+# /etc/default/yabi says. With retain its last picture stays on
+# the framebuffer for the application starting after it.
+
+YABI_QUIT=yes
+[ -r /etc/default/yabi ] && . /etc/default/yabi
+
+[ "$1" = start ] || exit 0
+yabi progress 100 2>/dev/null || exit 0
+
+# Give the bar a few seconds to reach the last frame.
+i=0
+while [ $i -lt 50 ]; do
+	status=$(yabi status 2>/dev/null) || break
+	frame=${status#frame=}
+	frame=${frame%% *}
+	frames=${status#*frames=}
+	frames=${frames%% *}
+	[ $((frame + 1)) -ge "$frames" ] && break
+	sleep 0.1
+	i=$((i + 1))
+done
+yabi pause 2>/dev/null
+case "$YABI_QUIT" in
+yes) yabi quit 2>/dev/null ;;
+retain) yabi --retain quit 2>/dev/null ;;
+esac
+exit 0
