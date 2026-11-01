@@ -1,0 +1,88 @@
+.TH YABI 1 "2026-11-01" "yabi 0.1.0"
+.SH NAME
+yabi \- yet another bootsplash implementation
+.SH SYNOPSIS
+.B yabi
+[\fIoptions\fR] \fIcommand\fR [\fIarguments\fR]
+.SH DESCRIPTION
+.B yabi
+shows a boot splash on the Linux framebuffer and lets the boot scripts drive
+it. It starts
+.BR fbv (1)
+with a control socket and leaves it running; every later call sends one
+command to it and exits. There is no daemon.
+.SH COMMANDS
+.TP
+.BR start " [\fItheme\fR]"
+Start fbv with the theme's animation, \fBdefault\fR when none is given, and
+wait until it answers. A theme with mode \fBprogress\fR starts on its first
+frame.
+.TP
+.BI progress " percent"
+Move a progress animation to \fIpercent\fR (0 to 100). Forward moves step
+through the frames at the animation's pace.
+.TP
+.BI frame " n"
+Show frame \fIn\fR of the animation.
+.TP
+.BR pause ", " resume
+Stop and restart the animation.
+.TP
+.BI show " file"
+Switch to another image or animation.
+.TP
+.BI theme " theme"
+Switch to another theme.
+.TP
+.B status
+Print the current frame, the frame count and whether the animation is paused.
+.TP
+.B ping
+Exit 0 when the splash is running.
+.TP
+.B quit
+Close the splash and wait until fbv has exited, so the framebuffer is free.
+.SH OPTIONS
+.TP
+.BR \-s ", " \-\-socket " \fIpath\fR"
+Control socket, /run/yabi.sock by default or \fB$YABI_SOCKET\fR.
+.TP
+.BR \-f ", " \-\-fbv " \fIpath\fR"
+fbv program to start, \fBfbv\fR from \fB$PATH\fR by default or \fB$YABI_FBV\fR.
+.TP
+.BR \-d ", " \-\-themes " \fIdir\fR"
+Directory holding the themes.
+.TP
+.BR \-t ", " \-\-timeout " \fIms\fR"
+How long to wait for fbv, 3000 by default.
+.TP
+.BR \-n ", " \-\-no\-graphics
+For \fBstart\fR: leave the console in text mode.
+.TP
+.BR \-r ", " \-\-retain
+For \fBquit\fR: keep the splash on screen and the console in graphics mode
+for the program taking over the display.
+.SH THEMES
+A theme is a directory, named or given as a path containing a slash, holding
+\fBtheme.conf\fR and its animation:
+.PP
+.nf
+# comment
+animation = boot.gif   # relative to the theme directory
+mode = progress        # progress or loop
+scale = none           # none, shrink or fit
+.fi
+.PP
+In \fBprogress\fR mode the animation holds the frame set by \fBprogress\fR;
+an animation of 101 frames gives one frame per percent. In \fBloop\fR mode it
+plays freely.
+.SH EXIT STATUS
+0 done, 1 failed, 2 usage error, 3 splash not running.
+.SH EXAMPLE
+.nf
+yabi start
+yabi progress 30
+yabi quit
+.fi
+.SH SEE ALSO
+.BR fbv (1)
