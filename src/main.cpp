@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "client.hpp"
 #include "launch.hpp"
+#include "rc.hpp"
 #include "theme.hpp"
 
 #include <cerrno>
@@ -43,7 +44,9 @@ void usage(FILE *out)
 		"  theme <theme>     switch to another theme\n"
 		"  status            print the frame, frame count and pause state\n"
 		"  ping              exit 0 when the splash is running\n"
-		"  quit              close the splash and wait until fbv exited\n\n"
+		"  quit              close the splash and wait until fbv exited\n"
+		"  rc [dir]          run the S??* scripts of dir (default /etc/init.d) with \"start\",\n"
+		"                    moving the progress after each one\n\n"
 		"Options:\n"
 		"  -s, --socket <path>  control socket (default %s, or $YABI_SOCKET)\n"
 		"  -f, --fbv <path>     fbv to start (default fbv from $PATH, or $YABI_FBV)\n"
@@ -145,6 +148,21 @@ int quit(const Settings &s)
 	return success;
 }
 
+int rc(const Settings &s, const std::string &dir)
+{
+	const auto scripts = rc_scripts(dir);
+	const int failed = run_rc(scripts, [&](int percent) {
+		// The splash may be gone or disabled; booting goes on anyway.
+		if (auto client = Client::connect(s.socket)) {
+			try {
+				client->request("progress " + std::to_string(percent), s.timeout);
+			} catch (const std::exception &) {
+			}
+		}
+	});
+	return failed ? failure : success;
+}
+
 bool parse_ms(const char *text, std::chrono::milliseconds &out)
 {
 	char *end;
@@ -231,6 +249,8 @@ int main(int argc, char **argv)
 		}
 		if (cmd == "quit")
 			return arity(0, 0) ? quit(s) : usage_error;
+		if (cmd == "rc")
+			return arity(0, 1) ? rc(s, args.size() > 1 ? args[1] : "/etc/init.d") : usage_error;
 	} catch (const std::exception &e) {
 		std::fprintf(stderr, "yabi: %s\n", e.what());
 		return failure;

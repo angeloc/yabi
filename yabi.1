@@ -44,6 +44,11 @@ Exit 0 when the splash is running.
 .TP
 .B quit
 Close the splash and wait until fbv has exited. The framebuffer is then free.
+.TP
+.BR rc " [\fIdir\fR]"
+Run the executable \fBS??*\fR scripts of \fIdir\fR in order, with the argument
+\fBstart\fR, and move the progress after each one. The default directory is
+/etc/init.d. Use it in place of the rcS loop of a SysV or busybox init.
 .SH OPTIONS
 .TP
 .BR \-s ", " \-\-socket " \fIpath\fR"
