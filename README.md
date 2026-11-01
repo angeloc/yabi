@@ -3,10 +3,10 @@
 Yet another bootsplash implementation: a boot splash for embedded Linux on the framebuffer, small
 enough for any system and driven by plain commands from the init scripts.
 
-yabi shows its animations with [fbv](https://github.com/angeloc/fbv-ng), which has a control
-socket. `yabi start` launches fbv and returns; every later `yabi` call sends one command over
-the socket and exits. There is no daemon, so yabi works the same with SysV init, busybox init or
-systemd.
+yabi shows its animations with [fbv-ng](https://github.com/angeloc/fbv-ng), through its control
+socket. `yabi start` launches its `fbv` binary and returns; every later `yabi` call sends one
+command over the socket and exits. There is no daemon, so yabi works the same with SysV init,
+busybox init or systemd.
 
 ```
 yabi start              # show the default theme
@@ -68,7 +68,7 @@ systemd: build with `-DYABI_SYSTEMD=ON` to install `yabi-start.service` and
 ## Building
 
 yabi needs only a C++20 compiler and CMake 3.16 or later; no libraries beyond the C and C++
-runtime. fbv must be on the target.
+runtime. The `fbv` binary of fbv-ng, with `--control`, must be on the target.
 
 ```
 cmake -S . -B build
@@ -106,7 +106,7 @@ With an emulator set, `ctest` runs the tests on the build machine.
 
 `demo/` boots yabi in a small QEMU virtual machine: the prebuilt Alpine Linux kernel and
 userspace, with static fbv and yabi in one initramfs and busybox init running SysV-style boot
-scripts. The splash shows the Buildroot logo above a progress bar that `yabi rc` moves as each
+scripts. The splash shows a logo above a progress bar that `yabi rc` moves as each
 demo service starts; once booted, try the yabi commands on the console.
 
 ```
