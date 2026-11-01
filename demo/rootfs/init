@@ -1,0 +1,11 @@
+#!/bin/sh
+# yabi demo: initramfs entry point
+mount -t proc proc /proc
+mount -t sysfs sys /sys
+mount -t devtmpfs dev /dev
+mkdir -p /dev/pts /run
+mount -t devpts devpts /dev/pts
+mount -t tmpfs run /run
+# QEMU's standard VGA, with fbdev emulation it gives /dev/fb0
+modprobe bochs
+exec /sbin/init

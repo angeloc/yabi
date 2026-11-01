@@ -1,0 +1,17 @@
+#!/bin/sh
+# yabi demo: the splash stays up at 100%, try the commands
+[ "$1" = start ] || exit 0
+cat <<'MSG'
+
+  Boot complete, the splash is at 100%. Try, in this console:
+
+    yabi progress 30      move the progress bar
+    yabi theme default    switch theme on the fly
+    yabi pause / resume   stop and restart the animation
+    yabi status           frame, frame count, pause state
+    yabi rc               run the boot scripts again
+    yabi quit             close the splash
+
+  Quit QEMU with Ctrl-a x.
+
+MSG
