@@ -3,8 +3,7 @@
 # Builds the yabi demo VM: the Alpine Linux kernel and userspace, prebuilt,
 # with static fbv and yabi and a splash theme, packed in one initramfs.
 #
-# Needs: curl, git, a C++20 compiler, cmake, make, python3 with Pillow,
-# unsquashfs, cpio, gzip. Nothing is compiled but giflib, fbv and yabi.
+# Needs: curl, git, a C++20 compiler, cmake, make, unsquashfs, cpio, gzip. Nothing is compiled but giflib, fbv and yabi.
 #
 # Environment:
 #   OUT      output directory (default demo/out)
@@ -28,7 +27,6 @@ KERNEL_SHA=17fbd3efd16f2e7cb1b945f06423b37399ba7d5ac8cdd3665e7f13f363500e85
 MODLOOP_SHA=16f3a2470f538f529c475134103e83321619e6d8e2b0367beb4a758304449ffe
 GIFLIB=giflib-6.1.3
 GIFLIB_SHA=b65b66b99f0424b93525f987386f22fc5efb9da2bfc92ad4a532249aaffbab0e
-LOGO_URL=https://buildroot.org/images/logo.png
 FBV_REPO=${FBV_REPO:-https://github.com/angeloc/fbv-ng.git}
 FBV_REF=${FBV_REF:-control}
 
@@ -54,7 +52,6 @@ fetch "$ALPINE_URL/$MINIROOTFS" "$MINIROOTFS" "$MINIROOTFS_SHA"
 fetch "$ALPINE_URL/netboot-$ALPINE/vmlinuz-virt" vmlinuz-virt "$KERNEL_SHA"
 fetch "$ALPINE_URL/netboot-$ALPINE/modloop-virt" modloop-virt "$MODLOOP_SHA"
 fetch "https://sources.buildroot.net/giflib/$GIFLIB.tar.gz" "$GIFLIB.tar.gz" "$GIFLIB_SHA"
-fetch "$LOGO_URL" buildroot-logo.png
 
 # Static binaries run on Alpine's musl userspace as they are.
 echo "Building giflib"
@@ -88,13 +85,6 @@ tar -C "$rootfs" -xzf "$dl/$MINIROOTFS"
 DESTDIR=$rootfs cmake --install "$work/yabi" --strip >/dev/null
 install -m 755 -s "$work/fbv/fbv" "$rootfs/usr/bin/fbv"
 cp -R "$here/rootfs/." "$rootfs/"
-
-# The Buildroot logo above the progress bar
-mkdir -p "$rootfs/usr/share/yabi/themes/buildroot"
-python3 "$top/tools/make_progress_gif.py" --logo "$dl/buildroot-logo.png" \
-	"$rootfs/usr/share/yabi/themes/buildroot/progress.gif"
-printf 'animation = progress.gif\nmode = progress\nscale = none\n' \
-	> "$rootfs/usr/share/yabi/themes/buildroot/theme.conf"
 
 # The bochs DRM driver and what it needs, from the kernel's module image
 unsquashfs -q -d "$work/modloop" "$dl/modloop-virt" >/dev/null
