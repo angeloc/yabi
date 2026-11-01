@@ -29,6 +29,7 @@ yabi quit               # close the splash, the framebuffer is free on return
 | `progress <0-100>` | step the animation to the frame matching the percentage            |
 | `frame <n>`        | show frame n                                                       |
 | `pause`, `resume`  | stop and restart the animation                                     |
+| `freeze`           | finish: move to 100%, wait for the animation, then pause it        |
 | `show <file>`      | switch to another image or animation                               |
 | `theme <theme>`    | switch to another theme                                            |
 | `status`           | print the frame, the frame count and the pause state               |
@@ -57,6 +58,7 @@ A theme is a directory with a `theme.conf` file and an animation:
 ```
 animation = progress.gif   # relative to the theme directory
 mode = progress            # progress: hold the frame set by "yabi progress"; loop: play freely
+                           # and ignore the progress, e.g. a spinner
 scale = none               # none, shrink or fit to the screen
 ```
 
@@ -83,8 +85,9 @@ yabi installs two scripts in `/etc/init.d`. It changes nothing else in the boot.
    It sleeps until rc opens the next `S??*` script, then moves the progress to the place of
    that script. It uses inotify, so it does not poll. Under OpenRC, it follows the started
    services instead.
-3. At the end, `S98yabi` moves the progress to 100%, pauses the animation when it gets
-   there, and closes the splash.
+3. At the end, `S98yabi` runs `yabi freeze`. This moves the progress to 100% and pauses the
+   animation when it gets there. A loop theme, such as a spinner, just stops. Then
+   `S98yabi` closes the splash.
 
 `/etc/default/yabi` sets the theme, the init directories to follow, and how the splash ends:
 

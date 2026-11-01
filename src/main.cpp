@@ -12,6 +12,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <fstream>
 #include <fcntl.h>
 #include <getopt.h>
 #include <memory>
@@ -47,6 +48,8 @@ void usage(FILE *out)
 		"  progress <0-100>  move the progress animation\n"
 		"  frame <n>         show frame n of the animation\n"
 		"  pause, resume     stop and restart the animation\n"
+		"  freeze            finish the splash: move it to 100%%, wait for the animation\n"
+		"                    to get there and pause it, for an application to draw over\n"
 		"  show <file>       switch to another image or animation\n"
 		"  theme <theme>     switch to another theme\n"
 		"  status            print the frame, frame count and pause state\n"
@@ -95,10 +98,57 @@ int send(const Settings &s, const std::string &command, bool print = false)
 	return success;
 }
 
+// The mode of the running theme, kept next to the socket: a loop theme
+// ignores the progress.
+std::string mode_path(const Settings &s)
+{
+	return s.socket + ".mode";
+}
+
+bool looping(const Settings &s)
+{
+	std::ifstream in(mode_path(s));
+	std::string mode;
+	in >> mode;
+	return mode == "loop";
+}
+
 // Puts a freshly loaded theme in its initial state.
 int apply_mode(const Settings &s, const Theme &theme)
 {
-	return send(s, theme.mode == Theme::Mode::progress ? "frame 0" : "resume");
+	const bool progress = theme.mode == Theme::Mode::progress;
+	std::ofstream(mode_path(s)) << (progress ? "progress" : "loop") << '\n';
+	return send(s, progress ? "frame 0" : "resume");
+}
+
+int progress(const Settings &s, const std::string &percent)
+{
+	if (Client::connect(s.socket) && looping(s))
+		return success;
+	return send(s, "progress " + percent);
+}
+
+// Moves a progress theme to 100%, waits for the animation to get there and
+// pauses it; a loop theme is just paused.
+int freeze(const Settings &s)
+{
+	if (!looping(s)) {
+		if (const int rc = send(s, "progress 100"))
+			return rc;
+		const auto end = std::chrono::steady_clock::now() + 5s;
+		while (std::chrono::steady_clock::now() < end) {
+			auto client = Client::connect(s.socket);
+			if (!client)
+				break;
+			const Reply status = client->request("status", s.timeout);
+			std::size_t frame = 0, frames = 0;
+			if (!status.ok || std::sscanf(status.text.c_str(), "frame=%zu frames=%zu", &frame, &frames) != 2 ||
+			    frame + 1 >= frames)
+				break;
+			std::this_thread::sleep_for(100ms);
+		}
+	}
+	return send(s, "pause");
 }
 
 int start(const Settings &s, const std::string &name)
@@ -154,6 +204,7 @@ int quit(const Settings &s)
 		std::fprintf(stderr, "yabi: fbv did not exit\n");
 		return failure;
 	}
+	std::remove(mode_path(s).c_str());
 	return success;
 }
 
@@ -196,6 +247,8 @@ int watch(const Settings &s, std::vector<std::string> dirs)
 		std::fprintf(stderr, "yabi: splash not running (%s)\n", s.socket.c_str());
 		return not_running;
 	}
+	if (looping(s))
+		return success;
 
 	// Detach, so the init script that started us goes on.
 	const pid_t pid = ::fork();
@@ -294,8 +347,12 @@ int main(int argc, char **argv)
 	try {
 		if (cmd == "start")
 			return arity(0, 1) ? start(s, args.size() > 1 ? args[1] : "default") : usage_error;
-		if (cmd == "progress" || cmd == "frame")
+		if (cmd == "progress")
+			return arity(1, 1) ? progress(s, args[1]) : usage_error;
+		if (cmd == "frame")
 			return arity(1, 1) ? send(s, cmd + " " + args[1]) : usage_error;
+		if (cmd == "freeze")
+			return arity(0, 0) ? freeze(s) : usage_error;
 		if (cmd == "pause" || cmd == "resume" || cmd == "ping")
 			return arity(0, 0) ? send(s, cmd) : usage_error;
 		if (cmd == "status")
