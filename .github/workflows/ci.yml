@@ -18,7 +18,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y cmake libgif-dev libsystemd-dev pkg-config
       - name: fbv
         run: |
-          git clone --depth 1 -b control https://github.com/angeloc/fbv-ng.git fbv-ng
+          git clone --depth 1 https://github.com/angeloc/fbv-ng.git fbv-ng
           cmake -S fbv-ng -B fbv-build -DBUILD_TESTING=OFF -DFBVNG_WITH_PNG=OFF -DFBVNG_WITH_JPEG=OFF
           cmake --build fbv-build -j
       - name: Configure

@@ -29,7 +29,7 @@ MODLOOP_SHA=16f3a2470f538f529c475134103e83321619e6d8e2b0367beb4a758304449ffe
 GIFLIB=giflib-6.1.3
 GIFLIB_SHA=b65b66b99f0424b93525f987386f22fc5efb9da2bfc92ad4a532249aaffbab0e
 FBV_REPO=${FBV_REPO:-https://github.com/angeloc/fbv-ng.git}
-FBV_REF=${FBV_REF:-control}
+FBV_REF=${FBV_REF:-main}
 
 # fetch <url> <file> [sha256]
 fetch() {
