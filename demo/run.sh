@@ -28,6 +28,7 @@ while [ $# -gt 0 ]; do
 	esac
 	shift
 done
+command -v qemu-system-x86_64 >/dev/null || { echo "qemu-system-x86_64 not found, install QEMU (qemu-system-x86)" >&2; exit 1; }
 for f in vmlinuz-virt initramfs.cpio.gz; do
 	[ -f "$out/$f" ] || { echo "$out/$f missing, run demo/build.sh first" >&2; exit 1; }
 done
@@ -55,8 +56,9 @@ accel=
 [ -w /dev/kvm ] && accel="-enable-kvm -cpu host"
 
 qemu() {
+	# exec: run in the background, "$!" is QEMU itself, so the EXIT trap stops it
 	# shellcheck disable=SC2086
-	qemu-system-x86_64 $accel -m 512 -vga none -device VGA,edid=on,xres=1024,yres=768 \
+	exec qemu-system-x86_64 $accel -m 512 -vga none -device VGA,edid=on,xres=1024,yres=768 \
 		-kernel "$out/vmlinuz-virt" -initrd "$initrd" \
 		-append "console=ttyS0 quiet loglevel=3" "$@"
 }
