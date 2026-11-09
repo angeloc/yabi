@@ -74,6 +74,15 @@ bar. The bundled themes were made with it:
 * `theme2`: "Linux" in the Lato font (SIL Open Font License) above the bar
 * `theme3`: a spinner, without a progress bar (loop mode)
 
+These recordings show each theme while the [demo](#demo) virtual machine boots, from the
+first frame of the splash until the application takes over the screen:
+
+| `default` | `theme1` |
+|---|---|
+| ![default theme booting](demo/gifs/default.gif) | ![theme1 booting](demo/gifs/theme1.gif) |
+| **`theme2`** | **`theme3`** |
+| ![theme2 booting](demo/gifs/theme2.gif) | ![theme3 booting](demo/gifs/theme3.gif) |
+
 ## Boot integration
 
 ### SysV init and busybox init
@@ -202,7 +211,12 @@ What the scripts need:
   from the `../fbv-ng` checkout when there is one, and clones fbv-ng otherwise.
 - `run.sh` needs `qemu-system-x86_64`, and uses KVM when it is available.
 
-`run.sh --check` boots without a window and saves screenshots of the splash.
+`run.sh` has two more modes, both without a window:
+
+- `run.sh --check` boots and saves screenshots of the splash.
+- `run.sh --theme themes/theme1 --record theme1.gif` boots and records the splash as a GIF,
+  until the application takes over. This needs ffmpeg and Pillow. The GIFs of the
+  [themes](#themes), in `demo/gifs/`, were made this way.
 
 ## Testing
 
