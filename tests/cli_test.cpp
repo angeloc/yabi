@@ -171,6 +171,20 @@ int main(int argc, char **argv)
 	reset_log();
 	CHECK(run("freeze").status == 0);
 	CHECK(logged() == "progress 100\nstatus\npause\n");
+	CHECK(::access((sock + ".frozen").c_str(), F_OK) == 0);
+	CHECK(run("quit").status == 0);
+	CHECK(::access((sock + ".frozen").c_str(), F_OK) != 0);
+
+	// While freeze takes the progress to 100%, the watcher moves it no more.
+	CHECK(run("--no-graphics start").status == 0);
+	CHECK(run("watch " + initd).status == 0);
+	std::ofstream(sock + ".frozen") << '\n';
+	reset_log();
+	CHECK(std::system((initd + "/S30c start").c_str()) == 0);
+	for (int i = 0; i < 50 && std::system("pgrep -f '[y]abi -s .* watch /' >/dev/null") == 0; i++)
+		std::this_thread::sleep_for(std::chrono::milliseconds(20));
+	CHECK(std::system("pgrep -f '[y]abi -s .* watch /' >/dev/null") != 0);
+	CHECK(logged() == "status\n");
 	CHECK(run("quit").status == 0);
 
 	(void)!std::system(("rm -rf " + dir).c_str());

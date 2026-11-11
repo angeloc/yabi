@@ -105,6 +105,12 @@ std::string mode_path(const Settings &s)
 	return s.socket + ".mode";
 }
 
+// Present once freeze took the progress to its end: yabi watch stops then.
+std::string frozen_path(const Settings &s)
+{
+	return s.socket + ".frozen";
+}
+
 bool looping(const Settings &s)
 {
 	std::ifstream in(mode_path(s));
@@ -118,6 +124,7 @@ int apply_mode(const Settings &s, const Theme &theme)
 {
 	const bool progress = theme.mode == Theme::Mode::progress;
 	std::ofstream(mode_path(s)) << (progress ? "progress" : "loop") << '\n';
+	std::remove(frozen_path(s).c_str());
 	return send(s, progress ? "frame 0" : "resume");
 }
 
@@ -133,6 +140,9 @@ int progress(const Settings &s, const std::string &percent)
 int freeze(const Settings &s)
 {
 	if (!looping(s)) {
+		// Stops yabi watch first: a progress of its own would hold the
+		// animation short of the end.
+		std::ofstream(frozen_path(s)) << '\n';
 		if (const int rc = send(s, "progress 100"))
 			return rc;
 		const auto end = std::chrono::steady_clock::now() + 5s;
@@ -206,6 +216,7 @@ int quit(const Settings &s)
 		return failure;
 	}
 	std::remove(mode_path(s).c_str());
+	std::remove(frozen_path(s).c_str());
 	return success;
 }
 
@@ -230,6 +241,9 @@ void follow(const Settings &s, Watcher &boot, Client &client)
 				// Paused by S98yabi: the application owns the screen now.
 				const Reply status = client.request("status", s.timeout);
 				if (!status.ok || status.text.find("paused=1") != std::string::npos)
+					return;
+				// freeze took over, checked last, just before the progress.
+				if (::access(frozen_path(s).c_str(), F_OK) == 0)
 					return;
 				if (!client.request("progress " + std::to_string(*percent), s.timeout).ok)
 					return;
