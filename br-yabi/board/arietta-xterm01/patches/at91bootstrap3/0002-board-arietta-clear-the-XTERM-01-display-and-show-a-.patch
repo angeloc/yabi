@@ -1,0 +1,242 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Angelo Compagnucci <angelo.compagnucci@gmail.com>
+Date: Wed, 11 Nov 2026 19:55:18 +0100
+Subject: [PATCH] board: arietta: clear the XTERM-01 display and show a logo
+
+Out of reset the ILI9341 of the Acme Systems XTERM-01 display is white,
+and a panel that stayed powered (e.g. through the serial console cable)
+keeps its last picture until Linux takes it over.
+
+Early in the board init, reset the panel on SPI1, fill it with black and
+turn it on. Once the SD card is mounted, draw logo.bmp of the boot
+partition, a 320x240 24 bit BMP, if there is one: a boot splash from the
+first second, oriented as Linux draws with rotation 90.
+
+load_sdcard() calls at91_board_sdcard_mounted(), a weak board hook, once
+the card is mounted, and sdcard_load_file() reads a file of the card.
+
+Upstream: not sent
+Signed-off-by: Angelo Compagnucci <angelo.compagnucci@gmail.com>
+---
+ .../at91sam9x5_arietta/at91sam9x5_arietta.c   | 147 ++++++++++++++++++
+ driver/sdcard.c                               |   9 ++
+ include/sdcard.h                              |   6 +
+ 3 files changed, 162 insertions(+)
+
+diff --git a/contrib/board/acme/at91sam9x5_arietta/at91sam9x5_arietta.c b/contrib/board/acme/at91sam9x5_arietta/at91sam9x5_arietta.c
+index 915a018c..a0636bb0 100644
+--- a/contrib/board/acme/at91sam9x5_arietta/at91sam9x5_arietta.c
++++ b/contrib/board/acme/at91sam9x5_arietta/at91sam9x5_arietta.c
+@@ -50,6 +50,151 @@
+ extern void hw_init_hook(void);
+ #endif
+ 
++#include "arch/at91_spi.h"
++#include "sdcard.h"
++
++/*
++ * Acme Systems XTERM-01: ILI9341 2.8" display on SPI1, chip select on PA8,
++ * D/C on PC4 and RESET on PC3.
++ */
++#define XTERM01_CS	AT91C_PIN_PA(8)
++#define XTERM01_DC	AT91C_PIN_PC(4)
++#define XTERM01_RESET	AT91C_PIN_PC(3)
++
++static void xterm01_write(unsigned char byte)
++{
++	while (!(readl(AT91C_BASE_SPI1 + SPI_SR) & AT91C_SPI_TDRE))
++		;
++	writel(byte, AT91C_BASE_SPI1 + SPI_TDR);
++}
++
++static void xterm01_wait(void)
++{
++	while (!(readl(AT91C_BASE_SPI1 + SPI_SR) & AT91C_SPI_TXEMPTY))
++		;
++}
++
++static void xterm01_command(unsigned char command)
++{
++	xterm01_wait();
++	pio_set_value(XTERM01_DC, 0);
++	xterm01_write(command);
++	xterm01_wait();
++	pio_set_value(XTERM01_DC, 1);
++}
++
++/*
++ * Out of reset the panel is white, and a panel that stayed powered keeps
++ * its last picture: reset it and fill it with black, then Linux takes it
++ * over.
++ */
++static void xterm01_clear(void)
++{
++	const struct pio_desc pins[] = {
++		{"SPI1_MISO",	AT91C_PIN_PA(21),	0, PIO_DEFAULT, PIO_PERIPH_B},
++		{"SPI1_MOSI",	AT91C_PIN_PA(22),	0, PIO_DEFAULT, PIO_PERIPH_B},
++		{"SPI1_SPCK",	AT91C_PIN_PA(23),	0, PIO_DEFAULT, PIO_PERIPH_B},
++		{"LCD_CS",	XTERM01_CS,		1, PIO_DEFAULT, PIO_OUTPUT},
++		{"LCD_DC",	XTERM01_DC,		1, PIO_DEFAULT, PIO_OUTPUT},
++		{"LCD_RESET",	XTERM01_RESET,		0, PIO_DEFAULT, PIO_OUTPUT},
++		{(char *)0,	0, 0, PIO_DEFAULT, PIO_PERIPH_A},
++	};
++	unsigned int i;
++
++	/* The panel is in reset from here */
++	pmc_enable_periph_clock(AT91C_ID_PIOA_B, PMC_PERIPH_CLK_DIVIDER_NA);
++	pmc_enable_periph_clock(AT91C_ID_PIOC_D, PMC_PERIPH_CLK_DIVIDER_NA);
++	pio_configure(pins);
++
++	/* Master, mode 0, 8 bit words at MCK / 8 */
++	pmc_enable_periph_clock(AT91C_ID_SPI1, PMC_PERIPH_CLK_DIVIDER_NA);
++	writel(AT91C_SPI_SWRST, AT91C_BASE_SPI1 + SPI_CR);
++	writel(AT91C_SPI_MSTR | AT91C_SPI_MODFDIS | AT91C_SPI_PCS(0xe),
++	       AT91C_BASE_SPI1 + SPI_MR);
++	writel(AT91C_SPI_NCPHA | AT91C_SPI_BITS_8 | AT91C_SPI_SCBR(8),
++	       AT91C_BASE_SPI1 + SPI_CSR(0));
++	writel(AT91C_SPI_SPIEN, AT91C_BASE_SPI1 + SPI_CR);
++
++	udelay(20);
++	pio_set_value(XTERM01_RESET, 1);
++	/* No sleep out before 120 ms from the reset */
++	mdelay(120);
++
++	pio_set_value(XTERM01_CS, 0);
++	xterm01_command(0x11);		/* sleep out */
++	mdelay(5);
++	xterm01_command(0x3a);		/* pixel format: */
++	xterm01_write(0x55);		/* 16 bit */
++	xterm01_command(0x2c);		/* memory write, whole panel */
++	for (i = 0; i < 240 * 320 * 2; i++)
++		xterm01_write(0);
++	xterm01_command(0x29);		/* display on */
++	xterm01_wait();
++	pio_set_value(XTERM01_CS, 1);
++}
++
++static unsigned int le(const unsigned char *p, int bytes)
++{
++	unsigned int v = 0;
++
++	while (bytes--)
++		v = v << 8 | p[bytes];
++	return v;
++}
++
++/*
++ * Draws logo.bmp of the boot partition, a 320x240 24 bit BMP, the way
++ * Linux draws on the panel with rotation 90: landscape (MV), BGR panel.
++ */
++#define XTERM01_LOGO	((unsigned char *)0x23000000)	/* free DDR */
++
++void at91_board_sdcard_mounted(void)
++{
++	const unsigned char *bmp = XTERM01_LOGO;
++	int width, height, x, y;
++
++	if (sdcard_load_file("logo.bmp", XTERM01_LOGO))
++		return;
++	width = (int)le(bmp + 18, 4);
++	height = (int)le(bmp + 22, 4);
++	if (bmp[0] != 'B' || bmp[1] != 'M' || width != 320 ||
++	    (height != 240 && height != -240) || le(bmp + 28, 2) != 24 ||
++	    le(bmp + 30, 4) != 0) {
++		dbg_info("XTERM-01: logo.bmp is not a 320x240 24 bit BMP\n");
++		return;
++	}
++
++	pio_set_value(XTERM01_CS, 0);
++	xterm01_command(0x36);		/* memory access control: */
++	xterm01_write(0x28);		/* MV | BGR */
++	xterm01_command(0x2a);		/* columns 0-319 */
++	xterm01_write(0);
++	xterm01_write(0);
++	xterm01_write(319 >> 8);
++	xterm01_write(319 & 0xff);
++	xterm01_command(0x2b);		/* pages 0-239 */
++	xterm01_write(0);
++	xterm01_write(0);
++	xterm01_write(0);
++	xterm01_write(239);
++	xterm01_command(0x2c);		/* memory write */
++	for (y = 0; y < 240; y++) {
++		/* Rows are stored bottom up unless the height is negative */
++		const unsigned char *p = bmp + le(bmp + 10, 4) +
++			(height > 0 ? 239 - y : y) * 320 * 3;
++
++		for (x = 0; x < 320; x++, p += 3) {
++			const unsigned int pixel = (p[2] & 0xf8) << 8 |
++				(p[1] & 0xfc) << 3 | p[0] >> 3;
++
++			xterm01_write(pixel >> 8);
++			xterm01_write(pixel & 0xff);
++		}
++	}
++	xterm01_wait();
++	pio_set_value(XTERM01_CS, 1);
++}
++
+ static void at91_dbgu_hw_init(void)
+ {
+ 	/* Configure DBGU pins */
+@@ -210,6 +355,8 @@ void hw_init(void)
+ 	/* one wire pin init */
+ 	one_wire_hw_init();
+ 
++	xterm01_clear();
++
+ #ifdef CONFIG_USER_HW_INIT
+ 	hw_init_hook();
+ #endif
+diff --git a/driver/sdcard.c b/driver/sdcard.c
+index 4f2a67a5..6af365ce 100644
+--- a/driver/sdcard.c
++++ b/driver/sdcard.c
+@@ -35,6 +35,7 @@
+ #include "ff.h"
+ 
+ #include "debug.h"
++#include "sdcard.h"
+ 
+ #define CHUNK_SIZE	0x40000
+ 
+@@ -74,6 +75,11 @@ open_fail:
+ 
+ }
+ 
++int sdcard_load_file(char *filename, unsigned char *dest)
++{
++	return sdcard_loadimage(filename, (BYTE *)dest);
++}
++
+ #ifdef CONFIG_OVERRIDE_CMDLINE_FROM_EXT_FILE
+ static int sdcard_read_cmd(char *cmdline_file, char *cmdline_args)
+ {
+@@ -143,6 +149,9 @@ int load_sdcard(struct image_info *image)
+ 		return -1;
+ 	}
+ 
++	if (at91_board_sdcard_mounted)
++		at91_board_sdcard_mounted();
++
+ 	dbg_info("SD/MMC: Image: Read file %s to %x\n",
+ 					image->filename, image->dest);
+ 
+diff --git a/include/sdcard.h b/include/sdcard.h
+index 4f6c22e9..9bf9d5e1 100644
+--- a/include/sdcard.h
++++ b/include/sdcard.h
+@@ -30,4 +30,10 @@
+ 
+ extern int load_sdcard(struct image_info *image);
+ 
++/* Reads a file of the card in dest, while load_sdcard() has it mounted */
++extern int sdcard_load_file(char *filename, unsigned char *dest);
++
++/* A board may show a picture read with sdcard_load_file() while booting */
++extern void at91_board_sdcard_mounted(void) __attribute__((weak));
++
+ #endif /* #ifndef __SDCARD_H__ */
+-- 
+2.53.0
+

@@ -1,0 +1,28 @@
+config BR2_PACKAGE_YABI
+	bool "yabi"
+	depends on BR2_INSTALL_LIBSTDCPP
+	depends on BR2_TOOLCHAIN_GCC_AT_LEAST_10 # C++20
+	depends on !BR2_PACKAGE_FBV # fbv-ng
+	select BR2_PACKAGE_FBV_NG
+	select BR2_PACKAGE_GIFLIB # the themes are GIF animations
+	help
+	  Yet another bootsplash implementation: a boot splash on the
+	  framebuffer that shows fbv-ng animations and follows the
+	  boot. With busybox or SysV init it installs S00yabi and
+	  S98yabi; with systemd, its units.
+
+	  https://github.com/angeloc/yabi
+
+if BR2_PACKAGE_YABI
+
+config BR2_PACKAGE_YABI_DEMO
+	bool "demo application"
+	depends on BR2_INIT_BUSYBOX || BR2_INIT_SYSV
+	help
+	  Install the application of the yabi demo, started at the end
+	  of the boot, which takes the screen over from the splash.
+
+endif
+
+comment "yabi needs a toolchain w/ C++, gcc >= 10"
+	depends on !BR2_INSTALL_LIBSTDCPP || !BR2_TOOLCHAIN_GCC_AT_LEAST_10

@@ -178,6 +178,8 @@ When an emulator is set, `ctest` runs the tests on the build machine.
 
 ## Demo
 
+### In a virtual machine
+
 `demo/` boots yabi in a small QEMU virtual machine. It is made of:
 
 - the prebuilt Alpine Linux kernel and userspace;
@@ -217,6 +219,16 @@ What the scripts need:
 - `run.sh --theme themes/theme1 --record theme1.gif` boots and records the splash as a GIF,
   until the application takes over. This needs ffmpeg and Pillow. The GIFs of the
   [themes](#themes), in `demo/gifs/`, were made this way.
+
+### On real hardware
+
+`br-yabi/` is a Buildroot external tree. It has the fbv-ng and yabi packages, and a demo on
+real hardware: the Acme Systems Arietta G25 with the XTERM-01 display, showing theme1.
+
+`br-yabi/build.sh` downloads a Buildroot release and builds the SD card image. See
+`br-yabi/board/arietta-xterm01/readme.txt`.
+
+![theme1 and the demo application on the Arietta G25 with the XTERM-01](demo/gifs/arietta-xterm01.gif)
 
 ## Testing
 

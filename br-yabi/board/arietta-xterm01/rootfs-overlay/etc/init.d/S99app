@@ -1,0 +1,6 @@
+#!/bin/sh
+# yabi demo: the product's graphical application, after S98yabi, which left
+# the splash's last picture on the framebuffer. It draws over it, its
+# 1024x768 animation fitted to the 320x240 display.
+[ "$1" = start ] || exit 0
+setsid fbv -y -c -i -u -g -f -e /usr/share/demo-app/app.gif </dev/null >/dev/null 2>&1 &

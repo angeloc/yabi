@@ -1,0 +1,52 @@
+From: Angelo Compagnucci <angelo.compagnucci@gmail.com>
+Date: Wed, 11 Nov 2026 12:45:00 +0100
+Subject: [PATCH] spi: atmel: limit transfers to the bounce buffer size
+
+On SAM9 (CONFIG_SOC_SAM_V4_V5) a transfer from a vmalloc buffer is
+copied in a bounce buffer of SPI_MAX_DMA_XFER bytes, but the whole
+transfer is copied, whatever its length, and nothing limits the length
+of a transfer.
+
+The MIPI DBI panel drivers send a full frame from the framebuffer, a
+vmalloc buffer, in one transfer: 153600 bytes for a 320x240 display
+(ili9341 of the Acme Systems XTERM-01), and the copy writes past the
+bounce buffer:
+
+  Unable to handle kernel paging request at virtual address c8915000 when write
+  PC is at mmiocpy+0x34/0x2a0
+   mmiocpy from atmel_spi_one_transfer+0x4f0/0x77c
+
+When the bounce buffers are in use, report SPI_MAX_DMA_XFER as the
+maximum transfer size, so that the SPI devices split longer transfers.
+
+Upstream: not sent
+Signed-off-by: Angelo Compagnucci <angelo.compagnucci@gmail.com>
+---
+ drivers/spi/spi-atmel.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/drivers/spi/spi-atmel.c b/drivers/spi/spi-atmel.c
+--- a/drivers/spi/spi-atmel.c
++++ b/drivers/spi/spi-atmel.c
+@@ -591,6 +591,12 @@ static void atmel_spi_release_dma(void *
+ 	}
+ }
+ 
++/* Transfers from vmalloc buffers are copied in the bounce buffers */
++static size_t atmel_spi_max_transfer_size(struct spi_device *spi)
++{
++	return SPI_MAX_DMA_XFER;
++}
++
+ static int atmel_spi_configure_dma(struct spi_controller *host,
+ 				   struct atmel_spi *as)
+ {
+@@ -637,6 +643,8 @@ static int atmel_spi_configure_dma(struc
+ 			err = -ENOMEM;
+ 			goto err_release_dma;
+ 		}
++
++		host->max_transfer_size = atmel_spi_max_transfer_size;
+ 	}
+ 
+ 	err = devm_add_action_or_reset(dev, atmel_spi_release_dma, host);

@@ -1,0 +1,2 @@
+source "$BR2_EXTERNAL_YABI_PATH/package/fbv-ng/Config.in"
+source "$BR2_EXTERNAL_YABI_PATH/package/yabi/Config.in"

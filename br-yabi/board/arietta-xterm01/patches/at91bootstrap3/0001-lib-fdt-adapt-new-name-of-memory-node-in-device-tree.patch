@@ -1,0 +1,35 @@
+From 72da9d23ed07bbfc793d767dc5a4044cc0a95706 Mon Sep 17 00:00:00 2001
+From: Xing Chen <xing.chen@microchip.com>
+Date: Fri, 24 Sep 2021 10:47:35 +0800
+Subject: [PATCH] lib: fdt: adapt new name of memory node in device tree file
+
+The name of memory node was changed from 'memory' to 'memory@address'
+in device tree files in Linux. For example, 'memory@20000000' .
+This commit checks if the memory node is named 'memory' or it has a trailing
+'@' .
+
+Signed-off-by: Xing Chen <xing.chen@microchip.com>
+(cherry picked from commit 72da9d23ed07bbfc793d767dc5a4044cc0a95706)
+Upstream: https://github.com/linux4sam/at91bootstrap/commit/72da9d23ed07bbfc793d767dc5a4044cc0a95706
+Signed-off-by: Angelo Compagnucci <angelo.compagnucci@gmail.com>
+---
+ lib/fdt.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/lib/fdt.c b/lib/fdt.c
+index 7c37fcd5..84538856 100644
+--- a/lib/fdt.c
++++ b/lib/fdt.c
+@@ -277,7 +277,8 @@ static int of_get_node_offset(void *blob, const char *name, int *offset)
+ 
+ 		nodename = (char *)of_dt_struct_offset(blob,(nodeoffset + 4));
+ 		if ((memcmp(nodename, name, namelen) == 0)
+-			&& (nodename[namelen] == '\0'))
++			&& ((nodename[namelen] == '\0')
++				|| (nodename[namelen] == '@')))
+ 			break;
+ 
+ 		start_offset = nextoffset;
+-- 
+2.53.0
+

@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Arietta G25 with the Acme Systems XTERM-01 2.8" display (ILI9341,
+ * 240x320, on SPI1). Connections from the XTERM-01 schematic:
+ * J4.7 SCK, J4.8 MOSI, J4.10 MISO, J4.25 CS (PA8), J4.31 D/C (PC4),
+ * J4.33 RESET (PC3). The backlight is always on.
+ */
+#include "microchip/at91-ariettag25.dts"
+
+/ {
+	model = "Acme Systems Arietta G25 with XTERM-01";
+};
+
+&spi1 {
+	cs-gpios = <&pioA 8 GPIO_ACTIVE_LOW>;
+	status = "okay";
+
+	display@0 {
+		compatible = "adafruit,yx240qv29", "ilitek,ili9341";
+		reg = <0>;
+		spi-max-frequency = <25000000>;
+		dc-gpios = <&pioC 4 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&pioC 3 GPIO_ACTIVE_HIGH>;
+		rotation = <90>;
+	};
+};

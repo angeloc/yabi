@@ -1,0 +1,3 @@
+# yabi settings for the init scripts S00yabi and S98yabi
+YABI_THEME=theme1
+YABI_QUIT=retain

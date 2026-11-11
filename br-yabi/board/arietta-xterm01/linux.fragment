@@ -1,0 +1,5 @@
+CONFIG_TINYDRM_ILI9341=y
+CONFIG_DRM_FBDEV_EMULATION=y
+CONFIG_FB_DEVICE=y
+# No text console on the display: it shows the splash only
+# CONFIG_FRAMEBUFFER_CONSOLE is not set

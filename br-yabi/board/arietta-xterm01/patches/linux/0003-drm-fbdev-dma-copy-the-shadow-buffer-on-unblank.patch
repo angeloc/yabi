@@ -1,0 +1,93 @@
+From: Angelo Compagnucci <angelo.compagnucci@gmail.com>
+Date: Fri, 13 Nov 2026 12:00:00 +0100
+Subject: [PATCH] drm/fbdev-dma: Copy the shadow buffer on unblank
+
+With a shadow buffer, what userspace draws in fbdev reaches the
+framebuffer memory only when the damage worker runs. Turning the display
+on shows the framebuffer memory as it is. So a program that draws its
+first picture and then unblanks, such as a boot splash, shows an older
+picture for a moment.
+
+Seen on an ILI9341 panel (tinydrm ili9341): enabling the pipe sends the
+whole framebuffer memory to the panel, still black, and the splash only
+replaces it once the damage worker runs.
+
+Nothing can be flushed to a display that is off. But the copy from the
+shadow buffer into the framebuffer memory does not need the display. On
+unblank, copy the whole shadow buffer into the framebuffer memory before
+turning the display on. The damage worker still flushes the damage once
+the display is on.
+
+Upstream: not sent yet (v2 of a patch sent to dri-devel)
+Signed-off-by: Angelo Compagnucci <angelo.compagnucci@gmail.com>
+---
+ drivers/gpu/drm/drm_fbdev_dma.c | 46 ++++++++++++++++++++++++++-------
+ 1 file changed, 37 insertions(+), 9 deletions(-)
+
+diff --git a/drivers/gpu/drm/drm_fbdev_dma.c b/drivers/gpu/drm/drm_fbdev_dma.c
+index feecd44..33c4bad 100644
+--- a/drivers/gpu/drm/drm_fbdev_dma.c
++++ b/drivers/gpu/drm/drm_fbdev_dma.c
+@@ -96,15 +96,6 @@ static void drm_fbdev_dma_shadowed_fb_destroy(struct fb_info *info)
+ 	kfree(fb_helper);
+ }
+ 
+-static const struct fb_ops drm_fbdev_dma_shadowed_fb_ops = {
+-	.owner = THIS_MODULE,
+-	.fb_open = drm_fbdev_dma_fb_open,
+-	.fb_release = drm_fbdev_dma_fb_release,
+-	FB_DEFAULT_DEFERRED_OPS(drm_fbdev_dma_shadowed),
+-	DRM_FB_HELPER_DEFAULT_OPS,
+-	.fb_destroy = drm_fbdev_dma_shadowed_fb_destroy,
+-};
+-
+ /*
+  * struct drm_fb_helper
+  */
+@@ -199,6 +190,43 @@ static const struct drm_fb_helper_funcs drm_fbdev_dma_helper_funcs = {
+  * struct drm_fb_helper
+  */
+ 
++static int drm_fbdev_dma_shadowed_fb_blank(int blank, struct fb_info *info)
++{
++	struct drm_fb_helper *fb_helper = info->par;
++	struct drm_clip_rect clip = {
++		.x2 = fb_helper->fb->width,
++		.y2 = fb_helper->fb->height,
++	};
++
++	/*
++	 * Turning the display on shows the framebuffer memory. Copy the
++	 * shadow buffer into it first, so it holds what was drawn. This
++	 * does not need the display; the damage worker still flushes the
++	 * damage once the display is on.
++	 */
++	if (blank == FB_BLANK_UNBLANK)
++		drm_fbdev_dma_damage_blit(fb_helper, &clip);
++
++	return drm_fb_helper_blank(blank, info);
++}
++
++static const struct fb_ops drm_fbdev_dma_shadowed_fb_ops = {
++	.owner = THIS_MODULE,
++	.fb_open = drm_fbdev_dma_fb_open,
++	.fb_release = drm_fbdev_dma_fb_release,
++	FB_DEFAULT_DEFERRED_OPS(drm_fbdev_dma_shadowed),
++	/* DRM_FB_HELPER_DEFAULT_OPS, with a blank that copies the shadow */
++	.fb_check_var = drm_fb_helper_check_var,
++	.fb_set_par = drm_fb_helper_set_par,
++	.fb_setcmap = drm_fb_helper_setcmap,
++	.fb_blank = drm_fbdev_dma_shadowed_fb_blank,
++	.fb_pan_display = drm_fb_helper_pan_display,
++	.fb_debug_enter = drm_fb_helper_debug_enter,
++	.fb_debug_leave = drm_fb_helper_debug_leave,
++	.fb_ioctl = drm_fb_helper_ioctl,
++	.fb_destroy = drm_fbdev_dma_shadowed_fb_destroy,
++};
++
+ static int drm_fbdev_dma_driver_fbdev_probe_tail(struct drm_fb_helper *fb_helper,
+ 						 struct drm_fb_helper_surface_size *sizes)
+ {
+-- 
+2.53.0
+
