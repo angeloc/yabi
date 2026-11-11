@@ -93,7 +93,7 @@ int main(int argc, char **argv)
 	const std::string anim = themes + "/default/progress.gif";
 	char real[4096];
 	CHECK(::realpath(anim.c_str(), real));
-	CHECK(logged() == "args -y -c -i -u -g --control " + sock + " " + real + "\nping\nframe 0\n");
+	CHECK(logged() == "args -y -c -i -u -p -g --control " + sock + " " + real + "\nping\nframe 0\n");
 	CHECK(run("start").status == 1);
 
 	reset_log();
@@ -151,7 +151,7 @@ int main(int argc, char **argv)
 	// Graphics mode can be left off.
 	reset_log();
 	CHECK(run("--no-graphics start").status == 0);
-	CHECK(logged().rfind("args -y -c -i -u --control ", 0) == 0);
+	CHECK(logged().rfind("args -y -c -i -u -p --control ", 0) == 0);
 	CHECK(run("quit").status == 0);
 
 	// A loop theme spins on whatever the progress says.

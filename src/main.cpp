@@ -159,7 +159,8 @@ int start(const Settings &s, const std::string &name)
 	}
 	const Theme theme = load_theme(theme_directory(name, s.themes));
 
-	std::vector<std::string> args = {s.fbv, "-y", "-c", "-i", "-u"};
+	// Paused on the first frame: nothing runs ahead of the first command.
+	std::vector<std::string> args = {s.fbv, "-y", "-c", "-i", "-u", "-p"};
 	if (s.graphics)
 		args.emplace_back("-g");
 	if (theme.scale == Theme::Scale::shrink)
