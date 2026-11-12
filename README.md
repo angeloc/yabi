@@ -1,4 +1,4 @@
-# yabi
+<img src="docs/yabi-logo.png" alt="YABI: yet another bootsplash implementation" width="100%">
 
 yabi is a boot splash for embedded Linux. The name means "yet another bootsplash
 implementation".
